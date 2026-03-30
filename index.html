@@ -1,0 +1,2631 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Volunteer Task Matching System</title>
+    <!-- Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- ApexCharts & GSAP -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 50: '#f0fdfa', 100: '#ccfbf1', 500: '#0ea5e9', 600: '#0284c7' },
+                        brand: {
+                            blue: '#06b6d4',
+                            green: '#10b981',
+                            deep: '#1e40af'
+                        }
+                    },
+                    fontFamily: { sans: ['Inter'], display: ['Poppins'] },
+                    boxShadow: { 'soft': '0 4px 20px -2px rgba(0,0,0,0.03)', 'card': '0 10px 30px -5px rgba(0,0,0,0.04)' },
+                    backgroundImage: {
+                        'brand-gradient': 'linear-gradient(135deg, #0ea5e9 0%, #10b981 100%)',
+                        'brand-gradient-hover': 'linear-gradient(135deg, #0284c7 0%, #059669 100%)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
+            color: #334155;
+        }
+
+        .sidebar-item-active {
+            background: #f0f9ff;
+            color: #0284c7;
+            font-weight: 600;
+        }
+
+        .glass-header {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .input-error {
+            border-color: #f43f5e !important;
+            background: #fff1f2 !important;
+        }
+
+        .field-err {
+            color: #f43f5e;
+            font-size: 11px;
+            margin-top: 3px;
+            display: none;
+        }
+
+        .field-err.show {
+            display: block;
+        }
+
+        .google-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            border: 1.5px solid #e2e8f0;
+            background: #fff;
+            color: #1e293b;
+            font-weight: 600;
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .google-btn:hover {
+            background: #f8fafc;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #94a3b8;
+            font-size: 12px;
+            margin: 4px 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+
+        #toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body class="antialiased">
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-100 transform -translate-x-full lg:translate-x-0 transition-transform">
+        <div class="flex flex-col h-full">
+            <div class="p-6 flex items-center gap-3">
+                <div class="w-12 h-12 relative flex items-center justify-center">
+                    <!-- VECTO "V" Winged Logo SVG -->
+                    <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                        <defs>
+                            <linearGradient id="vGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#0ea5e9" stop-opacity="1" />
+                                <stop offset="100%" stop-color="#10b981" stop-opacity="1" />
+                            </linearGradient>
+                        </defs>
+                        <!-- Wings Left -->
+                        <path d="M35 45 C25 40, 15 50, 20 65" fill="none" stroke="url(#vGradient)" stroke-width="4"
+                            stroke-linecap="round" />
+                        <path d="M30 55 C20 52, 12 60, 18 72" fill="none" stroke="url(#vGradient)" stroke-width="3"
+                            stroke-linecap="round" />
+                        <!-- Wings Right -->
+                        <path d="M65 45 C75 40, 85 50, 80 65" fill="none" stroke="url(#vGradient)" stroke-width="4"
+                            stroke-linecap="round" />
+                        <path d="M70 55 C80 52, 88 60, 82 72" fill="none" stroke="url(#vGradient)" stroke-width="3"
+                            stroke-linecap="round" />
+                        <!-- Main "V" -->
+                        <path d="M35 40 L50 75 L65 40" fill="none" stroke="url(#vGradient)" stroke-width="8"
+                            stroke-linejoin="round" stroke-linecap="round" />
+                        <path d="M42 40 L50 60 L58 40" fill="none" stroke="white" stroke-opacity="0.3" stroke-width="2"
+                            stroke-linecap="round" />
+                    </svg>
+                </div>
+                <h1 class="font-display font-medium text-slate-800 leading-tight">
+                    <span
+                        class="text-xl font-extrabold tracking-tight underline decoration-brand-green/30 decoration-4 underline-offset-4">VECTO</span><br />
+                    <span class="text-brand-green text-[10px] uppercase font-bold tracking-widest">Volunteer
+                        System</span>
+                </h1>
+            </div>
+            <nav class="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto">
+                <button onclick="showPage('dashboard')"
+                    class="nav-item sidebar-item-active w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-500 hover:bg-slate-50">
+                    <svg data-lucide="layout-dashboard" class="w-5 h-5"></svg><span>Dashboard</span>
+                </button>
+                <button onclick="showPage('map-view')"
+                    class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-500 hover:bg-slate-50">
+                    <svg data-lucide="map" class="w-5 h-5"></svg><span>Disaster Map</span>
+                </button>
+                <button onclick="showPage('volunteers')"
+                    class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-500 hover:bg-slate-50">
+                    <svg data-lucide="users" class="w-5 h-5"></svg><span>Volunteers</span>
+                </button>
+                <button onclick="showPage('tasks')"
+                    class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-500 hover:bg-slate-50">
+                    <svg data-lucide="clipboard-check" class="w-5 h-5"></svg><span>Tasks</span>
+                </button>
+                <div class="my-2 border-t border-slate-100"></div>
+                <button onclick="showPage('matching')"
+                    class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-indigo-600 bg-indigo-50 hover:bg-indigo-100">
+                    <svg data-lucide="sparkles" class="w-5 h-5 animate-pulse"></svg><span
+                        class="font-medium text-indigo-700">Matching AI</span>
+                </button>
+                <button onclick="showPage('insights')"
+                    class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-500 hover:bg-slate-50">
+                    <svg data-lucide="bar-chart-2" class="w-5 h-5"></svg><span>Insights</span>
+                </button>
+                <div class="mt-auto pt-4 border-t border-slate-100">
+                    <button onclick="showPage('profile')"
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-500 hover:bg-slate-50">
+                        <svg data-lucide="user" class="w-5 h-5"></svg><span>Profile</span>
+                    </button>
+                    <button onclick="showPage('settings')"
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-500 hover:bg-slate-50">
+                        <svg data-lucide="settings" class="w-5 h-5"></svg><span>Settings</span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="lg:ml-64 min-h-screen flex flex-col">
+
+        <!-- Firebase Setup Banner (hidden when connected) -->
+        <div id="firebase-banner" class="hidden bg-amber-50 border-b-2 border-amber-300 px-6 py-4">
+            <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div class="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                    <svg data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></svg>
+                </div>
+                <div class="flex-1">
+                    <p class="font-bold text-amber-800 text-sm">⚡ Firebase Not Connected — Data will NOT persist across
+                        reloads!</p>
+                    <p class="text-amber-700 text-xs mt-0.5">To enable permanent database & real-time sync for all
+                        users, follow these 3 steps:</p>
+                    <ol class="text-amber-700 text-xs mt-2 list-decimal list-inside space-y-1">
+                        <li>Go to <a href="https://console.firebase.google.com" target="_blank"
+                                class="font-bold underline hover:text-amber-900">console.firebase.google.com</a> →
+                            Create a New Project</li>
+                        <li>Enable <strong>Firestore Database</strong> (Native mode) + <strong>Authentication</strong>
+                            (Email/Password &amp; Google)</li>
+                        <li>Go to Project Settings → Your Apps → Web App → Copy config → paste into <code
+                                class="bg-amber-100 px-1 rounded">FIREBASE_CONFIG</code> in this file (~line 345)</li>
+                    </ol>
+                </div>
+                <button onclick="document.getElementById('firebase-banner').classList.add('hidden')"
+                    class="text-amber-500 hover:text-amber-800 text-xs border border-amber-300 rounded-lg px-3 py-1 flex-shrink-0">Dismiss</button>
+            </div>
+        </div>
+
+        <!-- Topbar -->
+        <header
+            class="glass-header sticky top-0 z-40 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <button id="mobile-sidebar-toggle"
+                    class="lg:hidden p-2 text-slate-400 hover:bg-slate-100 rounded-lg"><svg
+                        data-lucide="menu"></svg></button>
+                <div class="relative w-64 hidden sm:block">
+                    <svg data-lucide="search"
+                        class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></svg>
+                    <input type="text" placeholder="Search..."
+                        class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-primary-500">
+                </div>
+            </div>
+            <div class="flex items-center gap-4 relative">
+                <!-- Notifications -->
+                <button id="notif-btn" class="p-2 text-slate-400 hover:text-slate-600 rounded-full relative">
+                    <svg data-lucide="bell" class="w-5 h-5"></svg>
+                    <span id="notif-badge"
+                        class="hidden absolute -top-0.5 -right-0.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">0</span>
+                </button>
+                <!-- Notif Dropdown -->
+                <div id="notif-dropdown"
+                    class="absolute top-12 right-12 w-80 bg-white border border-slate-100 shadow-xl rounded-2xl hidden flex-col overflow-hidden z-50">
+                    <div class="p-4 border-b border-slate-100 font-bold text-slate-800">Recent Notifications</div>
+                    <div class="divide-y divide-slate-100" id="notif-list"></div>
+                </div>
+
+                <div class="h-6 w-px bg-slate-200"></div>
+                <button onclick="showPage('profile')"
+                    class="flex items-center gap-2 hover:bg-slate-50 p-1 rounded-xl pr-3">
+                    <div id="topbar-avatar"
+                        class="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs border border-primary-200">
+                        ?</div>
+                    <span id="topbar-name" class="text-sm font-semibold text-slate-700 hidden sm:block">Guest</span>
+                </button>
+            </div>
+        </header>
+
+        <div id="content" class="flex-1 p-6 lg:p-10 max-w-7xl mx-auto w-full">
+
+            <!-- Dashboard -->
+            <section id="dashboard" class="page active">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold font-display text-slate-800">Dashboard</h2>
+                </div>
+
+                <!-- Stat Cards Row -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100 fade-up">
+                        <p class="text-sm font-semibold text-slate-500 mb-2 flex items-center justify-between">Total
+                            Volunteers <svg class="w-4 h-4 text-blue-500" data-lucide="users"></svg></p>
+                        <p id="stat-volunteers" class="text-3xl font-bold font-display text-slate-800">—</p>
+                        <p class="text-xs text-slate-400 mt-1">Registered in system</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100 fade-up"
+                        style="animation-delay:0.1s;">
+                        <p class="text-sm font-semibold text-slate-500 mb-2 flex items-center justify-between">Available
+                            Now <svg class="w-4 h-4 text-green-500" data-lucide="user-check"></svg></p>
+                        <p id="stat-available" class="text-3xl font-bold font-display text-green-600">—</p>
+                        <p class="text-xs text-slate-400 mt-1">Ready to be assigned</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100 fade-up"
+                        style="animation-delay:0.2s;">
+                        <p class="text-sm font-semibold text-slate-500 mb-2 flex items-center justify-between">Active
+                            Tasks <svg class="w-4 h-4 text-indigo-500" data-lucide="clipboard-list"></svg></p>
+                        <p id="stat-tasks" class="text-3xl font-bold font-display text-slate-800">—</p>
+                        <p class="text-xs text-slate-400 mt-1">Total in the system</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100 fade-up"
+                        style="animation-delay:0.3s;">
+                        <p class="text-sm font-semibold text-slate-500 mb-2 flex items-center justify-between">Urgent
+                            Needs <svg class="w-4 h-4 text-rose-500" data-lucide="alert-circle"></svg></p>
+                        <p id="stat-urgent" class="text-3xl font-bold font-display text-rose-600">—</p>
+                        <p class="text-xs text-slate-400 mt-1">High priority pending</p>
+                    </div>
+                </div>
+
+                <!-- 🇮🇳 INDIA EMERGENCY NEWS — Full Width Priority Panel -->
+                <div class="rounded-3xl overflow-hidden shadow-card border border-orange-200 mb-6 fade-up"
+                    style="animation-delay:0.32s;">
+                    <!-- Header -->
+                    <div
+                        class="bg-gradient-to-r from-orange-500 via-white to-green-600 px-6 py-3 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">🇮🇳</span>
+                            <div>
+                                <h3 class="font-extrabold text-slate-900 font-display text-base leading-tight">India
+                                    Emergency &amp; Disaster News</h3>
+                                <p class="text-slate-600 text-[11px]">Live · Google News · NDRF · NDMAIndia</p>
+                            </div>
+                            <span id="india-live-dot"
+                                class="flex items-center gap-1.5 bg-rose-100 text-rose-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-rose-200"><span
+                                    class="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping inline-block"></span>
+                                LIVE</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="india-updated" class="text-slate-500 text-[10px]"></span>
+                            <button onclick="fetchIndiaNews()"
+                                class="flex items-center gap-1 bg-orange-100 hover:bg-orange-200 text-orange-700 text-xs font-bold px-3 py-1.5 rounded-xl transition border border-orange-200">
+                                <svg data-lucide="refresh-cw" class="w-3 h-3"></svg> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Scrolling ticker -->
+                    <div class="bg-slate-900 px-4 py-2 overflow-hidden relative">
+                        <div id="india-ticker" class="text-xs text-slate-300 whitespace-nowrap">Loading India news...
+                        </div>
+                    </div>
+                    <!-- News cards grid -->
+                    <div id="india-news-grid"
+                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 bg-white">
+                        <div class="col-span-full flex items-center justify-center py-8 gap-3 text-slate-400">
+                            <svg data-lucide="loader-2" class="w-5 h-5 animate-spin"></svg>
+                            <span class="text-sm">Loading India alerts...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Body: Left = Disaster Feed | Right = Analytics -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 fade-up" style="animation-delay:0.35s;">
+
+                    <!-- LEFT: Live Disaster Alerts -->
+                    <div class="bg-white rounded-3xl shadow-card border border-rose-100 overflow-hidden flex flex-col"
+                        style="min-height:520px; max-height:620px;">
+                        <div
+                            class="px-5 py-4 bg-gradient-to-r from-rose-600 to-orange-500 flex items-center justify-between flex-shrink-0">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-white animate-ping"></div>
+                                <h3 class="font-bold text-white font-display text-sm">🌍 Live Global Disaster Alerts
+                                </h3>
+                                <span class="text-rose-100 text-[10px] hidden sm:block">GDACS · UN Feed</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span id="disaster-updated" class="text-rose-100 text-[10px]"></span>
+                                <button onclick="fetchDisasterAlerts()"
+                                    class="flex items-center gap-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg transition">
+                                    <svg data-lucide="refresh-cw" class="w-3 h-3"></svg> Refresh
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Scrollable list -->
+                        <div id="disaster-list" class="divide-y divide-slate-100 overflow-y-auto flex-1">
+                            <div class="flex items-center justify-center py-10 gap-3 text-slate-400">
+                                <svg data-lucide="loader-2" class="w-5 h-5 animate-spin"></svg>
+                                <span class="text-sm">Fetching live disaster data...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Analytics Charts stacked -->
+                    <div class="flex flex-col gap-5">
+                        <div class="bg-white p-5 rounded-2xl shadow-card border border-slate-100 flex-1">
+                            <h3 class="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2"><svg
+                                    data-lucide="bar-chart-2" class="w-4 h-4 text-indigo-500"></svg> Matching Efficiency
+                            </h3>
+                            <div id="dashChart1"></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl shadow-card border border-slate-100 flex-1">
+                            <h3 class="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2"><svg
+                                    data-lucide="pie-chart" class="w-4 h-4 text-emerald-500"></svg> Task Status
+                                Breakdown</h3>
+                            <div id="dashChart2"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+
+            <!-- Disaster Map -->
+            <section id="map-view" class="page">
+                <div class="mb-6 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-2xl font-bold font-display text-slate-800 text-center sm:text-left">Live
+                            Disaster Map</h2>
+                        <p class="text-slate-400 text-xs mt-1 text-center sm:text-left">Track disasters, tasks, and
+                            volunteers in real-time across the globe.</p>
+                    </div>
+                    <button onclick="updateMapMarkers()"
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-lg flex items-center gap-2">
+                        <svg data-lucide="refresh-cw" class="w-3 h-3"></svg> Sync Map
+                    </button>
+                </div>
+
+                <div
+                    class="relative bg-slate-100 rounded-[2.5rem] overflow-hidden border-4 border-white shadow-card h-[600px] lg:h-[700px]">
+                    <!-- The Map Container -->
+                    <div id="disaster-map" class="w-full h-full"></div>
+
+                    <!-- Map Legend Overlay -->
+                    <div
+                        class="absolute bottom-6 left-6 bg-white/90 backdrop-blur-md p-4 rounded-3xl shadow-xl border border-slate-100 space-y-3 z-10">
+                        <h4 class="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Map Legend</h4>
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-rose-500 shadow-sm shadow-rose-200"></div>
+                            <span class="text-xs font-bold text-slate-700">Live Disasters</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-indigo-600 shadow-sm shadow-indigo-200"></div>
+                            <span class="text-xs font-bold text-slate-700">Pending Tasks</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></div>
+                            <span class="text-xs font-bold text-slate-700">Available Volunteers</span>
+                        </div>
+                    </div>
+
+                    <!-- Map Search Overlay -->
+                    <div class="absolute top-6 left-6 right-6 lg:left-auto lg:w-80 z-10">
+                        <div class="relative">
+                            <svg data-lucide="search"
+                                class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></svg>
+                            <input id="map-search-input" type="text" placeholder="Jump to location..."
+                                class="w-full pl-11 pr-4 py-3.5 bg-white/90 backdrop-blur-md border border-white rounded-2xl shadow-xl outline-none focus:ring-4 focus:ring-indigo-500/10 text-sm font-medium">
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="volunteers" class="page">
+                <div class="mb-8 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold font-display text-slate-800">Volunteers</h2><button
+                        onclick="openModal('Volunteer')"
+                        class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold">+ Add
+                        Volunteer</button>
+                </div>
+                <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden fade-up">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-100 text-xs text-slate-500 uppercase">
+                                <th class="p-4 font-semibold">Name</th>
+                                <th class="p-4 font-semibold">Skills</th>
+                                <th class="p-4 font-semibold">Location</th>
+                                <th class="p-4 font-semibold">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vols-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Tasks -->
+            <section id="tasks" class="page">
+                <div class="mb-8 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold font-display text-slate-800">Active Tasks</h2><button
+                        onclick="openModal('Task')"
+                        class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold">+ Add Task</button>
+                </div>
+                <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden fade-up">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-100 text-xs text-slate-500 uppercase">
+                                <th class="p-4 font-semibold">Title</th>
+                                <th class="p-4 font-semibold">Priority</th>
+                                <th class="p-4 font-semibold">Location</th>
+                                <th class="p-4 font-semibold">Required Skill</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasks-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Matching -->
+            <section id="matching" class="page">
+                <div
+                    class="mb-8 border-b border-slate-200 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold font-display text-slate-800 flex items-center gap-3">
+                            <div
+                                class="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center text-white shadow-sm">
+                                <svg data-lucide="zap" class="w-5 h-5 fill-current"></svg>
+                            </div>
+                            SmartMatch <span class="text-sky-500">AI</span>
+                        </h2>
+                        <p class="text-slate-500 text-sm mt-1">Advanced volunteer-task matching engine.</p>
+                    </div>
+                    <div class="flex items-center gap-2 bg-sky-50 px-3 py-1.5 rounded-full border border-sky-100">
+                        <span class="w-2 h-2 bg-sky-500 rounded-full animate-pulse"></span>
+                        <span class="text-[10px] font-bold text-sky-700 uppercase tracking-widest">Active
+                            Intelligence</span>
+                    </div>
+                </div>
+                <div id="match-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-6 fade-up"></div>
+            </section>
+
+            <!-- Insights -->
+            <section id="insights" class="page">
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold font-display text-slate-800">Insights</h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 fade-up">
+                    <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100">
+                        <h3 class="font-bold text-slate-700 mb-4">Skill Demand</h3>
+                        <div id="insightChart1"></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100">
+                        <h3 class="font-bold text-slate-700 mb-4">Volunteer Availability</h3>
+                        <div id="insightChart2"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profile -->
+            <section id="profile" class="page">
+
+                <!-- Hero Cover Banner -->
+                <div class="relative rounded-3xl overflow-hidden mb-0 fade-up"
+                    style="height:160px; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%);">
+                    <div class="absolute inset-0 opacity-20"
+                        style="background-image: url('data:image/svg+xml,<svg width=\" 60\" height=\"60\" viewBox=\"0 0
+                        60 60\" xmlns=\"http://www.w3.org/2000/svg\">
+                        <g fill=\"none\" fill-rule=\"evenodd\">
+                            <g fill=\"%23ffffff\" fill-opacity=\"0.4\">
+                                <path d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6
+                                    34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\" />
+                            </g>
+                        </g></svg>');">
+                    </div>
+                    <div class="absolute bottom-0 right-6 opacity-10 text-white text-9xl font-black select-none">NGO
+                    </div>
+                </div>
+
+                <!-- Avatar Card overlapping banner -->
+                <div
+                    class="bg-white rounded-3xl shadow-card border border-slate-100 mx-0 px-6 pt-4 pb-6 mb-6 fade-up -mt-12 relative z-10">
+                    <div class="flex flex-col sm:flex-row items-center sm:items-end gap-5">
+                        <!-- Avatar -->
+                        <div class="relative flex-shrink-0 -mt-16 sm:-mt-20">
+                            <div id="profile-avatar"
+                                class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-4xl sm:text-5xl font-extrabold shadow-xl border-4 border-white">
+                                ?</div>
+                            <span
+                                class="absolute -bottom-2 -right-2 w-7 h-7 bg-green-400 border-2 border-white rounded-full flex items-center justify-center">
+                                <svg data-lucide="check" class="w-3.5 h-3.5 text-white"></svg>
+                            </span>
+                        </div>
+                        <!-- Name block -->
+                        <div class="flex-1 text-center sm:text-left pb-1">
+                            <h2 id="profile-display-name" class="text-xl font-extrabold text-slate-900 font-display">
+                                Your Name</h2>
+                            <p id="profile-display-role" class="text-slate-400 text-sm mt-0.5">Volunteer · Vecto
+                            </p>
+                            <div class="flex flex-wrap justify-center sm:justify-start gap-2 mt-2">
+                                <span id="profile-display-city"
+                                    class="hidden items-center gap-1 text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full"><svg
+                                        data-lucide="map-pin" class="w-3 h-3 text-indigo-400"></svg> <span
+                                        id="city-label">—</span></span>
+                                <span id="profile-display-org"
+                                    class="hidden items-center gap-1 text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full"><svg
+                                        data-lucide="building-2" class="w-3 h-3 text-purple-400"></svg> <span
+                                        id="org-label">—</span></span>
+                            </div>
+                        </div>
+                        <!-- Actions -->
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <button onclick="saveProfile()"
+                                class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-100 transition">
+                                <svg data-lucide="save" class="w-4 h-4"></svg> Save Profile
+                            </button>
+                            <button onclick="handleLogout()"
+                                class="flex items-center gap-2 text-rose-500 border border-rose-200 hover:bg-rose-50 text-sm font-semibold px-4 py-2.5 rounded-xl transition">
+                                <svg data-lucide="log-out" class="w-4 h-4"></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mini stats row -->
+                    <div class="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-slate-100">
+                        <div class="text-center">
+                            <p id="prof-stat-tasks" class="text-2xl font-extrabold text-indigo-600 font-display">—</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Tasks Done</p>
+                        </div>
+                        <div class="text-center border-x border-slate-100">
+                            <p id="prof-stat-status" class="text-2xl font-extrabold text-emerald-500 font-display">✅</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Active</p>
+                        </div>
+                        <div class="text-center">
+                            <p id="prof-stat-joined" class="text-2xl font-extrabold text-purple-500 font-display">🇮🇳
+                            </p>
+                            <p class="text-xs text-slate-400 mt-0.5">India</p>
+                        </div>
+                    </div>
+                </div>
+
+                <p id="profile-save-msg"
+                    class="text-green-600 text-sm font-semibold hidden flex items-center gap-2 mb-4 px-1"><svg
+                        data-lucide="check-circle-2" class="w-4 h-4"></svg> Profile saved successfully!</p>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 fade-up">
+
+                    <!-- LEFT: Form columns (span 2) -->
+                    <div class="lg:col-span-2 space-y-5">
+
+                        <!-- Identity Card -->
+                        <div class="bg-white rounded-3xl shadow-card border border-slate-100 overflow-hidden">
+                            <div
+                                class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-purple-50 flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center"><svg
+                                        data-lucide="user" class="w-4 h-4 text-indigo-600"></svg></div>
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-sm">Identity</h3>
+                                    <p class="text-xs text-slate-400">Your basic information</p>
+                                </div>
+                            </div>
+                            <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Full
+                                        Name <span class="text-rose-400">*</span></label>
+                                    <div class="relative"><svg data-lucide="user"
+                                            class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300"></svg><input
+                                            id="profile-name" type="text" placeholder="e.g. Ravi Kumar"
+                                            class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 text-sm font-semibold transition">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label
+                                        class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Username</label>
+                                    <div class="relative"><span
+                                            class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 text-sm font-bold">@</span><input
+                                            id="profile-username" type="text" placeholder="ravi007"
+                                            class="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 text-sm transition">
+                                    </div>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label
+                                        class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Email
+                                        Address</label>
+                                    <div class="relative"><svg data-lucide="mail"
+                                            class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300"></svg><input
+                                            id="profile-email" type="email" readonly
+                                            class="w-full pl-10 pr-4 py-3 bg-slate-100 border border-slate-200 rounded-2xl text-slate-400 text-sm cursor-default outline-none">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Card -->
+                        <div class="bg-white rounded-3xl shadow-card border border-slate-100 overflow-hidden">
+                            <div
+                                class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50 flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center"><svg
+                                        data-lucide="phone" class="w-4 h-4 text-emerald-600"></svg></div>
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-sm">Contact Details</h3>
+                                    <p class="text-xs text-slate-400">How volunteers can reach you</p>
+                                </div>
+                            </div>
+                            <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Phone
+                                        Number <span class="text-rose-400">*</span></label>
+                                    <div class="relative"><svg data-lucide="smartphone"
+                                            class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300"></svg><input
+                                            id="profile-phone" type="tel" placeholder="+91 98765 43210"
+                                            class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-50 text-sm transition">
+                                    </div>
+                                    <p id="err-phone" class="field-err">⚠ Phone number is required.</p>
+                                </div>
+                                <div>
+                                    <label
+                                        class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">City
+                                        / Location <span class="text-rose-400">*</span></label>
+                                    <div class="relative"><svg data-lucide="map-pin"
+                                            class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300"></svg><input
+                                            id="profile-city" type="text" placeholder="Chennai, Tamil Nadu"
+                                            class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-50 text-sm transition">
+                                    </div>
+                                    <p id="err-city" class="field-err">⚠ City is required.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- About Card -->
+                        <div class="bg-white rounded-3xl shadow-card border border-slate-100 overflow-hidden">
+                            <div
+                                class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50 flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center"><svg
+                                        data-lucide="briefcase" class="w-4 h-4 text-amber-600"></svg></div>
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-sm">About You</h3>
+                                    <p class="text-xs text-slate-400">Role & background</p>
+                                </div>
+                            </div>
+                            <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Role
+                                        <span class="text-rose-400">*</span></label>
+                                    <div class="relative"><svg data-lucide="shield"
+                                            class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 pointer-events-none"></svg>
+                                        <select id="profile-role"
+                                            class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-amber-500 text-sm appearance-none transition">
+                                            <option value="">Select your role...</option>
+                                            <option>Platform Administrator</option>
+                                            <option>Volunteer Coordinator</option>
+                                            <option>Field Volunteer</option>
+                                            <option>NGO Representative</option>
+                                            <option>Donor / Sponsor</option>
+                                            <option>Other</option>
+                                        </select>
+                                    </div>
+                                    <p id="err-role" class="field-err">⚠ Please select a role.</p>
+                                </div>
+                                <div>
+                                    <label
+                                        class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Organization</label>
+                                    <div class="relative"><svg data-lucide="building-2"
+                                            class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300"></svg><input
+                                            id="profile-org" type="text" placeholder="CareNGO Foundation"
+                                            class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-50 text-sm transition">
+                                    </div>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label
+                                        class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Short
+                                        Bio</label>
+                                    <textarea id="profile-bio" rows="3"
+                                        placeholder="Tell us about yourself, your skills, and your experience in disaster relief or community service..."
+                                        class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-50 text-sm resize-none transition"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- RIGHT: Sidebar cards -->
+                    <div class="space-y-5">
+
+                        <!-- Profile Completeness -->
+                        <div class="bg-white rounded-3xl shadow-card border border-slate-100 p-5">
+                            <h4 class="font-bold text-slate-700 text-sm mb-3 flex items-center gap-2"><svg
+                                    data-lucide="award" class="w-4 h-4 text-indigo-500"></svg> Profile Strength</h4>
+                            <div class="w-full bg-slate-100 rounded-full h-2.5 mb-2">
+                                <div id="profile-strength-bar"
+                                    class="h-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all w-[20%]">
+                                </div>
+                            </div>
+                            <p id="profile-strength-label" class="text-xs text-slate-400">Fill all fields to improve
+                                your match rate</p>
+                            <div id="profile-tips" class="mt-3 space-y-1.5"></div>
+                        </div>
+
+                        <!-- Skills Tags -->
+                        <div class="bg-white rounded-3xl shadow-card border border-slate-100 p-5">
+                            <h4 class="font-bold text-slate-700 text-sm mb-3 flex items-center gap-2"><svg
+                                    data-lucide="tag" class="w-4 h-4 text-purple-500"></svg> My Skills</h4>
+                            <div id="skill-tags" class="flex flex-wrap gap-2 mb-3 min-h-[32px]">
+                                <span class="text-xs text-slate-400">Add skills below →</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <input id="skill-input" type="text" placeholder="e.g. First Aid"
+                                    class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-purple-400 transition"
+                                    onkeydown="if(event.key==='Enter'){addSkillTag();event.preventDefault();}">
+                                <button onclick="addSkillTag()"
+                                    class="bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs font-bold px-3 py-2 rounded-xl transition">Add</button>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-2">Press Enter or click Add. Click a tag to remove
+                                it.</p>
+                        </div>
+
+                        <!-- Volunteer Activity Summary  -->
+                        <div class="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-3xl p-5 text-white">
+                            <h4 class="font-bold text-sm mb-4 flex items-center gap-2"><svg data-lucide="activity"
+                                    class="w-4 h-4"></svg> My Activity</h4>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-indigo-200 text-xs">Tasks Completed</span>
+                                    <span id="act-completed" class="font-bold text-sm">—</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-indigo-200 text-xs">Currently Assigned</span>
+                                    <span id="act-assigned" class="font-bold text-sm">—</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-indigo-200 text-xs">Availability</span>
+                                    <span
+                                        class="font-bold text-xs bg-green-400/20 text-green-300 border border-green-400/30 px-2 py-0.5 rounded-full">🟢
+                                        Available</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- Settings -->
+            <section id="settings" class="page">
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold font-display text-slate-800">Settings</h2>
+                    <p class="text-slate-400 text-sm mt-1">Manage how Vecto works for your organization.</p>
+                </div>
+
+                <div class="max-w-3xl space-y-6 fade-up">
+
+                    <!-- Matching Settings -->
+                    <div class="bg-white rounded-3xl shadow-card border border-slate-100 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
+                            <h3 class="font-bold text-slate-700 flex items-center gap-2"><svg data-lucide="sliders"
+                                    class="w-4 h-4 text-primary-500"></svg> Matching Preferences</h3>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+                            <div class="flex justify-between items-center px-6 py-4">
+                                <div>
+                                    <p class="font-semibold text-slate-700 text-sm">Strict Skill Matching</p>
+                                    <p class="text-xs text-slate-400 mt-0.5">Only suggest volunteers with 100% skill
+                                        match.</p>
+                                </div>
+                                <button id="setting-strict-match" onclick="toggleSetting(this)" data-on="true"
+                                    class="toggle-btn w-12 h-6 bg-indigo-500 rounded-full relative transition-all"><span
+                                        class="toggle-knob w-4 h-4 bg-white rounded-full absolute right-1 top-1 transition-all"></span></button>
+                            </div>
+                            <div class="flex justify-between items-center px-6 py-4">
+                                <div>
+                                    <p class="font-semibold text-slate-700 text-sm">Auto-Assign High Priority</p>
+                                    <p class="text-xs text-slate-400 mt-0.5">Instantly dispatch available volunteers for
+                                        urgent tasks.</p>
+                                </div>
+                                <button id="setting-auto-assign" onclick="toggleSetting(this)" data-on="false"
+                                    class="toggle-btn w-12 h-6 bg-slate-200 rounded-full relative transition-all"><span
+                                        class="toggle-knob w-4 h-4 bg-white rounded-full absolute left-1 top-1 transition-all"></span></button>
+                            </div>
+                            <div class="flex justify-between items-center px-6 py-4">
+                                <div>
+                                    <p class="font-semibold text-slate-700 text-sm">Location-Based Matching</p>
+                                    <p class="text-xs text-slate-400 mt-0.5">Prefer volunteers closest to the task
+                                        location.</p>
+                                </div>
+                                <button id="setting-location-match" onclick="toggleSetting(this)" data-on="false"
+                                    class="toggle-btn w-12 h-6 bg-slate-200 rounded-full relative transition-all"><span
+                                        class="toggle-knob w-4 h-4 bg-white rounded-full absolute left-1 top-1 transition-all"></span></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notification Settings -->
+                    <div class="bg-white rounded-3xl shadow-card border border-slate-100 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
+                            <h3 class="font-bold text-slate-700 flex items-center gap-2"><svg data-lucide="bell"
+                                    class="w-4 h-4 text-amber-500"></svg> Notifications</h3>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+                            <div class="flex justify-between items-center px-6 py-4">
+                                <div>
+                                    <p class="font-semibold text-slate-700 text-sm">New Volunteer Alerts</p>
+                                    <p class="text-xs text-slate-400 mt-0.5">Notify when a new volunteer registers.</p>
+                                </div>
+                                <button onclick="toggleSetting(this)" data-on="true"
+                                    class="toggle-btn w-12 h-6 bg-indigo-500 rounded-full relative transition-all"><span
+                                        class="toggle-knob w-4 h-4 bg-white rounded-full absolute right-1 top-1 transition-all"></span></button>
+                            </div>
+                            <div class="flex justify-between items-center px-6 py-4">
+                                <div>
+                                    <p class="font-semibold text-slate-700 text-sm">Task Completion Alerts</p>
+                                    <p class="text-xs text-slate-400 mt-0.5">Notify when a volunteer marks a task as
+                                        complete.</p>
+                                </div>
+                                <button onclick="toggleSetting(this)" data-on="true"
+                                    class="toggle-btn w-12 h-6 bg-indigo-500 rounded-full relative transition-all"><span
+                                        class="toggle-knob w-4 h-4 bg-white rounded-full absolute right-1 top-1 transition-all"></span></button>
+                            </div>
+                            <div class="flex justify-between items-center px-6 py-4">
+                                <div>
+                                    <p class="font-semibold text-slate-700 text-sm">Urgent Task Broadcasts</p>
+                                    <p class="text-xs text-slate-400 mt-0.5">Broadcast high-priority tasks to all
+                                        available volunteers.</p>
+                                </div>
+                                <button onclick="toggleSetting(this)" data-on="false"
+                                    class="toggle-btn w-12 h-6 bg-slate-200 rounded-full relative transition-all"><span
+                                        class="toggle-knob w-4 h-4 bg-white rounded-full absolute left-1 top-1 transition-all"></span></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- App Preferences -->
+                    <div class="bg-white rounded-3xl shadow-card border border-slate-100 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
+                            <h3 class="font-bold text-slate-700 flex items-center gap-2"><svg data-lucide="layout"
+                                    class="w-4 h-4 text-emerald-500"></svg> App Preferences</h3>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+                            <div class="flex justify-between items-center px-6 py-4">
+                                <div>
+                                    <p class="font-semibold text-slate-700 text-sm">Show Volunteer Locations on
+                                        Dashboard</p>
+                                    <p class="text-xs text-slate-400 mt-0.5">Display location info in the volunteer
+                                        summary.</p>
+                                </div>
+                                <button onclick="toggleSetting(this)" data-on="true"
+                                    class="toggle-btn w-12 h-6 bg-indigo-500 rounded-full relative transition-all"><span
+                                        class="toggle-knob w-4 h-4 bg-white rounded-full absolute right-1 top-1 transition-all"></span></button>
+                            </div>
+                            <div class="flex justify-between items-center px-6 py-4">
+                                <div>
+                                    <p class="font-semibold text-slate-700 text-sm">Compact Table View</p>
+                                    <p class="text-xs text-slate-400 mt-0.5">Reduce row padding for more data on screen.
+                                    </p>
+                                </div>
+                                <button onclick="toggleSetting(this)" data-on="false"
+                                    class="toggle-btn w-12 h-6 bg-slate-200 rounded-full relative transition-all"><span
+                                        class="toggle-knob w-4 h-4 bg-white rounded-full absolute left-1 top-1 transition-all"></span></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div class="bg-white rounded-3xl shadow-card border border-rose-100 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-rose-100 bg-rose-50">
+                            <h3 class="font-bold text-rose-600 flex items-center gap-2"><svg
+                                    data-lucide="alert-triangle" class="w-4 h-4"></svg> Danger Zone</h3>
+                        </div>
+                        <div class="px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <p class="font-semibold text-slate-700 text-sm">Sign Out of Account</p>
+                                <p class="text-xs text-slate-400 mt-0.5">You will be redirected to the login screen.</p>
+                            </div>
+                            <button onclick="handleLogout()"
+                                class="flex items-center gap-2 text-rose-600 border border-rose-200 bg-rose-50 hover:bg-rose-100 font-semibold text-sm px-5 py-2.5 rounded-xl transition"><svg
+                                    data-lucide="log-out" class="w-4 h-4"></svg> Sign Out</button>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </div>
+
+        <!-- Auth Modal — Premium Split Design -->
+        <div id="auth-modal" class="fixed inset-0 z-[100] flex hidden">
+            <!-- Left: Branding Panel -->
+            <div
+                class="hidden lg:flex flex-col justify-between w-[45%] bg-gradient-to-br from-indigo-700 via-indigo-600 to-primary-500 p-12 relative overflow-hidden">
+                <!-- BG decoration -->
+                <div class="absolute -top-24 -left-24 w-80 h-80 bg-white/5 rounded-full"></div>
+                <div class="absolute -bottom-32 -right-20 w-96 h-96 bg-white/5 rounded-full"></div>
+                <div
+                    class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-white/3 rounded-full">
+                </div>
+                <!-- Logo -->
+                <div class="relative z-10">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-12 h-12 relative flex items-center justify-center">
+                            <!-- VECTO "V" Winged Logo SVG Small White -->
+                            <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                                <!-- Wings -->
+                                <path d="M35 45 C25 40, 15 50, 20 65" fill="none" stroke="white" stroke-width="4"
+                                    stroke-linecap="round" />
+                                <path d="M65 45 C75 40, 85 50, 80 65" fill="none" stroke="white" stroke-width="4"
+                                    stroke-linecap="round" />
+                                <!-- Main "V" -->
+                                <path d="M35 40 L50 75 L65 40" fill="none" stroke="white" stroke-width="8"
+                                    stroke-linejoin="round" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <span class="text-white font-extrabold font-display text-2xl tracking-tight">VECTO</span>
+                    </div>
+                    <p class="text-indigo-200 text-xs font-medium">Next-Gen Volunteer Coordination</p>
+                </div>
+                <!-- Hero text -->
+                <div class="relative z-10">
+                    <div
+                        class="inline-flex items-center gap-2 bg-white/10 text-white text-xs font-semibold px-3 py-1.5 rounded-full mb-5 border border-white/20">
+                        <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-ping"></span> Live · Real-time ·
+                        AI-Powered
+                    </div>
+                    <h2 class="text-3xl font-extrabold text-white font-display leading-tight mb-4">Connecting
+                        Volunteers<br>with Communities<br>that Need Help</h2>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+                                <svg data-lucide="brain-circuit" class="w-4 h-4 text-white"></svg>
+                            </div>
+                            <p class="text-indigo-100 text-sm">AI-powered volunteer-task matching</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+                                <svg data-lucide="globe" class="w-4 h-4 text-white"></svg>
+                            </div>
+                            <p class="text-indigo-100 text-sm">Live global disaster alerts via GDACS &amp; India news
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+                                <svg data-lucide="bell-ring" class="w-4 h-4 text-white"></svg>
+                            </div>
+                            <p class="text-indigo-100 text-sm">Instant notifications when tasks are assigned nearby</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+                                <svg data-lucide="database" class="w-4 h-4 text-white"></svg>
+                            </div>
+                            <p class="text-indigo-100 text-sm">Permanent Firebase database with real-time sync</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Flag footer -->
+                <div class="relative z-10 flex items-center gap-2">
+                    <span class="text-lg">🇮🇳</span>
+                    <p class="text-indigo-200 text-xs">Built for India's NGO ecosystem</p>
+                </div>
+            </div>
+
+            <!-- Right: Login Form -->
+            <div class="flex-1 bg-white flex flex-col items-center justify-center p-8 sm:p-12 relative overflow-y-auto">
+                <!-- Mobile logo -->
+                <div class="lg:hidden flex items-center gap-3 mb-8">
+                    <div class="w-10 h-10 relative">
+                        <svg viewBox="0 0 100 100" class="w-full h-full">
+                            <defs>
+                                <linearGradient id="vGradient2" x1="0%" y1="100%" x2="100%" y2="0%">
+                                    <stop offset="0%" stop-color="#0ea5e9" stop-opacity="1" />
+                                    <stop offset="100%" stop-color="#10b981" stop-opacity="1" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M35 40 L50 75 L65 40" fill="none" stroke="url(#vGradient2)" stroke-width="12"
+                                stroke-linejoin="round" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <span class="font-extrabold font-display text-slate-800 text-xl tracking-tight">VECTO</span>
+                </div>
+
+                <div class="w-full max-w-sm">
+                    <!-- STEP 1: CREDENTIALS (Login or Initial Sign Up) -->
+                    <div id="auth-step-1" class="space-y-6">
+                        <div class="mb-8 text-center sm:text-left">
+                            <h3 id="auth-title"
+                                class="text-3xl font-extrabold text-slate-900 font-display tracking-tight">Welcome back
+                                👋</h3>
+                            <p id="auth-subtitle" class="text-slate-500 text-sm mt-2">Sign in to your Vecto account
+                            </p>
+                        </div>
+
+                        <!-- Google Button -->
+                        <button onclick="handleGoogleLogin()"
+                            class="google-btn mb-6 w-full py-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all flex items-center justify-center gap-3 font-semibold text-slate-700">
+                            <svg width="20" height="20" viewBox="0 0 48 48">
+                                <path fill="#4285F4"
+                                    d="M44.5 20H24v8.5h11.8C34.2 33.8 29.6 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6-6C34.5 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.8 0 20-7.8 20-21 0-1.4-.1-2.7-.5-4z" />
+                                <path fill="#34A853"
+                                    d="M6.3 14.7l7 5.1C15 16.1 19.2 13 24 13c3.1 0 5.9 1.1 8.1 2.9l6-6C34.5 5.1 29.6 3 24 3 16.2 3 9.4 7.9 6.3 14.7z" />
+                                <path fill="#FBBC05"
+                                    d="M24 45c5.4 0 10.4-1.9 14.2-5l-6.6-5.4C29.5 36.3 26.9 37 24 37c-5.6 0-10.3-3.3-12-8l-7 5.4C8.5 40.9 15.7 45 24 45z" />
+                                <path fill="#EA4335"
+                                    d="M44.5 20H24v8.5h11.8c-.8 2.4-2.4 4.4-4.5 5.7l6.6 5.4C41.9 36.1 44.5 30.3 44.5 24c0-1.4-.1-2.7-.5-4z" />
+                            </svg>
+                            Continue with Google
+                        </button>
+
+                        <div class="divider mb-6 opacity-60">or sign in with email</div>
+
+                        <div class="space-y-5">
+                            <div>
+                                <label
+                                    class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] block mb-2">Email
+                                    Address</label>
+                                <div class="relative">
+                                    <svg data-lucide="mail"
+                                        class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></svg>
+                                    <input type="email" id="auth-email" placeholder="you@example.com"
+                                        class="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-sm transition-all font-medium">
+                                </div>
+                                <p id="auth-email-err" class="field-err font-medium mt-1">⚠ Please enter a valid email
+                                    address.</p>
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] block mb-2">Password</label>
+                                <div class="relative">
+                                    <svg data-lucide="lock"
+                                        class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></svg>
+                                    <input type="password" id="auth-pass" placeholder="Min. 6 characters"
+                                        class="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-sm transition-all font-medium">
+                                </div>
+                                <p id="auth-pass-err" class="field-err font-medium mt-1">⚠ Password must be at least 6
+                                    characters.</p>
+                            </div>
+
+                            <button onclick="handleLogin()"
+                                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl transition shadow-lg shadow-indigo-200/50 hover:shadow-indigo-300 flex items-center justify-center gap-2 mt-2">
+                                <span id="auth-submit-text" class="flex items-center gap-2"><svg data-lucide="log-in"
+                                        class="w-4 h-4"></svg> Sign In</span>
+                            </button>
+
+                            <p id="auth-err"
+                                class="text-rose-500 text-xs hidden font-bold text-center bg-rose-50 p-3 rounded-xl border border-rose-100">
+                            </p>
+
+                            <div id="auth-unauthorized-box"
+                                class="hidden mt-4 p-5 bg-amber-50/70 border border-amber-200 rounded-2xl text-left backdrop-blur-sm">
+                                <p class="text-amber-800 text-xs font-bold flex items-center gap-2 mb-2"><svg
+                                        data-lucide="alert-circle" class="w-4 h-4"></svg> ACTION REQUIRED: Authorize
+                                    Domain</p>
+                                <p class="text-amber-700 text-[10px] leading-relaxed mb-3">Google Login is failing
+                                    because this domain isn't authorized in your Firebase project.</p>
+                                <ol class="text-amber-700 text-[10px] space-y-1.5 list-decimal ml-3">
+                                    <li>Open <a href="https://console.firebase.google.com/" target="_blank"
+                                            class="underline font-bold">Firebase Console</a></li>
+                                    <li>Go to <strong>Authentication</strong> &rarr; <strong>Settings</strong></li>
+                                    <li>Add <code class="bg-amber-100 px-1.5 py-0.5 rounded">localhost</code> (or your
+                                        current IP)</li>
+                                </ol>
+                            </div>
+
+                            <p class="text-center text-sm text-slate-500 mt-6 pt-4 border-t border-slate-100">
+                                <span id="auth-mode-text" class="opacity-70">Don't have an account?</span>
+                                <button onclick="toggleAuthMode()" id="auth-mode-link"
+                                    class="text-indigo-600 font-extrabold hover:underline ml-1">Sign Up</button>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: PROFILE SETUP (Newly Registered Page) -->
+                    <div id="auth-step-2" class="hidden space-y-6">
+                        <div class="mb-8 text-center sm:text-left">
+                            <span
+                                class="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 text-[10px] font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wider">Step
+                                2 of 2</span>
+                            <h3 class="text-3xl font-extrabold text-slate-900 font-display tracking-tight">Complete
+                                Profile ✨</h3>
+                            <p class="text-slate-500 text-sm mt-2">Introduce yourself to the Vecto community</p>
+                        </div>
+
+                        <div class="space-y-5">
+                            <div>
+                                <label
+                                    class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] block mb-2">Display
+                                    Name</label>
+                                <div class="relative">
+                                    <svg data-lucide="user"
+                                        class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></svg>
+                                    <input type="text" id="reg-name" placeholder="John Doe"
+                                        class="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-sm transition-all font-medium">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] block mb-2">I
+                                        am a...</label>
+                                    <select id="reg-role"
+                                        class="w-full px-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-sm transition-all font-medium appearance-none">
+                                        <option value="Volunteer">Individual Volunteer</option>
+                                        <option value="NGO Admin">NGO Administrator</option>
+                                        <option value="Govt Official">Govt Official</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label
+                                        class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] block mb-2">City</label>
+                                    <div class="relative">
+                                        <svg data-lucide="map-pin"
+                                            class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></svg>
+                                        <input type="text" id="reg-city" placeholder="Mumbai"
+                                            class="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-sm transition-all font-medium">
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] block mb-2">Organization
+                                    (Optional)</label>
+                                <div class="relative">
+                                    <svg data-lucide="building-2"
+                                        class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></svg>
+                                    <input type="text" id="reg-org" placeholder="Red Cross / My NGO"
+                                        class="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-sm transition-all font-medium">
+                                </div>
+                            </div>
+
+                            <button onclick="handleCompleteProfile()"
+                                class="w-full bg-slate-900 hover:bg-black text-white font-bold py-4 rounded-2xl transition-all shadow-xl shadow-slate-200 hover:shadow-2xl flex items-center justify-center gap-2 mt-4 transform hover:-translate-y-1">
+                                Complete &amp; Enter Dashboard <svg data-lucide="arrow-right" class="w-4 h-4"></svg>
+                            </button>
+
+                            <button onclick="backToStep1()"
+                                class="w-full py-2 text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest">
+                                &larr; Back to account info
+                            </button>
+                        </div>
+                    </div>
+
+                    <p class="text-center text-[10px] text-slate-400 mt-10 uppercase tracking-[0.15em] font-medium">
+                        Powered by Vecto Core Engine</p>
+                </div>
+
+                <p class="text-center text-xs text-slate-400 mt-8">By signing in you agree to our <span
+                        class="text-indigo-500 cursor-pointer hover:underline">Terms of Service</span> &amp; <span
+                        class="text-indigo-500 cursor-pointer hover:underline">Privacy Policy</span></p>
+            </div>
+        </div>
+        </div>
+
+        <!-- Add Modal Templates -->
+        <div id="add-modal"
+            class="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 id="modal-title" class="text-xl font-bold text-slate-800 font-display">Add</h3>
+                    <button onclick="closeModal()" class="text-slate-400 hover:bg-slate-100 p-2 rounded-full"><svg
+                            data-lucide="x"></svg></button>
+                </div>
+                <div id="modal-body" class="space-y-4"></div>
+                <button id="modal-save-btn"
+                    class="w-full bg-slate-900 text-white font-bold py-3 mt-6 rounded-xl hover:bg-slate-800 transition">Save
+                    Record</button>
+            </div>
+        </div>
+
+    </main>
+
+    <script type="module">
+        // @ts-nocheck
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+        lucide.createIcons();
+
+        // --- CONFIGURATION ---
+        // Put your keys here to enable live cloud features!
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBsjjR2WK-Io_l1gTt_uzh1318RjyRjg80",
+            authDomain: "smart-allocation-ef25d.firebaseapp.com",
+            projectId: "smart-allocation-ef25d",
+            storageBucket: "smart-allocation-ef25d.firebasestorage.app",
+            messagingSenderId: "322394005032",
+            appId: "1:322394005032:web:1b009f813637cd588c9f1d",
+            measurementId: "G-NLC3XYF8HL"
+        };
+        const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"; // Set to test real AI matching
+        const BACKEND_URL = "http://localhost:3000"; // Update if your backend runs elsewhere
+        // ---------------------
+
+        // Global coordinate state for currently editing item
+        let currentSelectedLocation = null;
+
+        /**
+         * Initialize Leaflet with Nominatim Autocomplete on an input field
+         */
+        window.initLocationAutocomplete = function (elementId, callback) {
+            const input = document.getElementById(elementId);
+            if (!input) return;
+
+            // Simple Nominatim search dropdown logic
+            let searchTimeout;
+            const dropdown = document.createElement('div');
+            dropdown.className = 'absolute z-[70] w-full bg-white border border-slate-200 rounded-xl shadow-xl mt-1 hidden overflow-hidden divide-y divide-slate-50';
+            input.parentNode.appendChild(dropdown);
+
+            input.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                const q = e.target.value;
+                if (q.length < 3) {
+                    dropdown.classList.add('hidden');
+                    return;
+                }
+
+                searchTimeout = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`${BACKEND_URL}/api/geocoding?q=${encodeURIComponent(q)}`);
+                        const results = await res.json();
+
+                        dropdown.innerHTML = '';
+                        if (results.length > 0) {
+                            results.forEach(res => {
+                                const item = document.createElement('button');
+                                item.className = 'w-full text-left px-4 py-3 text-xs hover:bg-slate-50 transition-colors flex items-center gap-2';
+                                item.innerHTML = `<svg data-lucide="map-pin" class="w-3 h-3 text-slate-400"></svg> <span>${res.display_name}</span>`;
+                                item.onclick = (e) => {
+                                    e.preventDefault();
+                                    input.value = res.display_name;
+                                    currentSelectedLocation = {
+                                        address: res.display_name,
+                                        lat: parseFloat(res.lat),
+                                        lng: parseFloat(res.lon)
+                                    };
+                                    dropdown.classList.add('hidden');
+                                    if (callback) callback(currentSelectedLocation);
+                                };
+                                dropdown.appendChild(item);
+                            });
+                            dropdown.classList.remove('hidden');
+                            lucide.createIcons();
+                        } else {
+                            dropdown.classList.add('hidden');
+                        }
+                    } catch (e) { console.error("Search error:", e); }
+                }, 400);
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        };
+
+        /**
+         * Fetch distance and duration from backend proxy
+         */
+        window.fetchTravelData = async function (origin, destination) {
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/distance`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        origins: typeof origin === 'string' ? origin : `${origin.lat},${origin.lng}`,
+                        destinations: typeof destination === 'string' ? destination : `${destination.lat},${destination.lng}`
+                    })
+                });
+                const data = await res.json();
+                if (data.status === "OK" && data.rows[0].elements[0].status === "OK") {
+                    return {
+                        distance: data.rows[0].elements[0].distance.text,
+                        duration: data.rows[0].elements[0].duration.text,
+                        durationValue: data.rows[0].elements[0].duration.value // seconds
+                    };
+                }
+                return null;
+            } catch (e) {
+                console.error("Distance API Error:", e);
+                return null;
+            }
+        };
+
+        let app, db, auth;
+        let isFirebaseConnected = false;
+
+        try {
+            if (FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY") {
+                app = initializeApp(FIREBASE_CONFIG);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                isFirebaseConnected = true;
+            }
+        } catch (e) { console.warn("Firebase Init Failed:", e); }
+
+        // Data State — Sample items with coords for initial map view
+        let volunteers = [
+            { id: 'v1', name: 'Arjun Mehta', skill: 'Medical, First Aid', location: 'Mumbai, Maharashtra', coords: { lat: 19.0760, lng: 72.8777 }, available: true, status: 'Available' },
+            { id: 'v2', name: 'Priya Sharma', skill: 'Logistics, Driving', location: 'Delhi, India', coords: { lat: 28.6139, lng: 77.2090 }, available: true, status: 'Available' },
+            { id: 'v3', name: 'Rajesh Kumar', skill: 'Search and Rescue', location: 'Bengaluru, Karnataka', coords: { lat: 12.9716, lng: 77.5946 }, available: true, status: 'Available' }
+        ];
+        let tasks = [
+            { id: 't1', title: 'Flood Relief Coordination', requiredSkill: 'Logistics', location: 'Chennai, Tamil Nadu', coords: { lat: 13.0827, lng: 80.2707 }, priority: 'High', status: 'Pending', assignedTo: null },
+            { id: 't2', title: 'Medical Camp Setup', requiredSkill: 'Medical', location: 'Kolkata, West Bengal', coords: { lat: 22.5726, lng: 88.3639 }, priority: 'Medium', status: 'Pending', assignedTo: null }
+        ];
+
+        // Ensure SPA functions are accessible globally
+        window.showPage = function (id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('sidebar-item-active', 'text-indigo-600', 'bg-indigo-50'));
+            const btn = document.querySelector(`button[onclick="showPage('${id}')"]`);
+            if (btn) {
+                if (id === 'matching') btn.classList.add('text-indigo-600', 'bg-indigo-50');
+                else if (id === 'map-view') btn.classList.add('sidebar-item-active');
+                else btn.classList.add('sidebar-item-active');
+            }
+
+            if (id === 'map-view') {
+                setTimeout(initDisasterMap, 100);
+            }
+
+            gsap.fromTo(`#${id} .fade-up`, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, stagger: 0.05, ease: 'power2.out' });
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        };
+
+        // ── DISASTER MAP ENGINE ─────────────────────────────────────────────
+        let disasterMap = null;
+        let mapMarkers = [];
+
+        window.initDisasterMap = function () {
+            if (disasterMap || !window.L) return;
+
+            disasterMap = L.map('disaster-map', {
+                center: [20.5937, 78.9629], // Center of India
+                zoom: 5,
+                zoomControl: false // We'll put zoom on the right later if needed
+            });
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(disasterMap);
+
+            // Initialize autocomplete for map jump
+            const mapInp = document.getElementById('map-search-input');
+            if (mapInp) {
+                initLocationAutocomplete('map-search-input', (loc) => {
+                    disasterMap.flyTo([loc.lat, loc.lng], 12);
+                });
+            }
+
+            updateMapMarkers();
+        };
+
+        window.updateMapMarkers = function () {
+            if (!disasterMap) return;
+
+            // Clear old markers
+            mapMarkers.forEach(m => disasterMap.removeLayer(m));
+            mapMarkers = [];
+
+            // 1. Plot Tasks (Indigo)
+            tasks.forEach(t => {
+                if (!t.coords) return;
+                const marker = L.circleMarker([t.coords.lat, t.coords.lng], {
+                    radius: 8,
+                    fillColor: '#4f46e5',
+                    color: '#ffffff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 1
+                });
+
+                marker.bindPopup(`
+                    <div class="p-3">
+                        <h4 class="font-bold text-slate-800 text-sm mb-1">${t.title}</h4>
+                        <p class="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-2">Pending Task</p>
+                        <p class="text-xs text-slate-500 mb-2">📍 ${t.location}</p>
+                        <button onclick="showPage('matching')" class="text-[10px] font-bold text-indigo-600 py-1 underline">Match Volunteer</button>
+                    </div>
+                `);
+
+                marker.addTo(disasterMap);
+                mapMarkers.push(marker);
+            });
+
+            // 2. Plot Volunteers (Emerald)
+            volunteers.forEach(v => {
+                if (!v.coords || (!v.available && v.status !== 'Available')) return;
+                const marker = L.circleMarker([v.coords.lat, v.coords.lng], {
+                    radius: 8,
+                    fillColor: '#10b981',
+                    color: '#ffffff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 1
+                });
+
+                marker.bindPopup(`
+                    <div class="p-3">
+                        <h4 class="font-bold text-slate-800 text-sm mb-1">${v.name}</h4>
+                        <p class="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-2">Available Volunteer</p>
+                        <p class="text-xs text-slate-500 mb-1">📍 ${v.location}</p>
+                        <p class="text-xs text-slate-400">⚡ ${v.skill}</p>
+                    </div>
+                `);
+
+                marker.addTo(disasterMap);
+                mapMarkers.push(marker);
+            });
+        };
+
+
+        // --- Helper: update profile UI after login ---
+        function updateUserProfile(user) {
+            const name = user.displayName || user.email.split('@')[0];
+            const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+            const email = user.email;
+            const provider = user.providerData[0]?.providerId === 'google.com' ? 'Google Account' : 'Email & Password';
+            // Topbar
+            document.getElementById('topbar-name').innerText = name;
+            document.getElementById('topbar-avatar').innerText = initials;
+            // Profile page
+            if (document.getElementById('profile-name')) document.getElementById('profile-name').value = name;
+            if (document.getElementById('profile-email')) document.getElementById('profile-email').value = email;
+            if (document.getElementById('profile-avatar')) document.getElementById('profile-avatar').innerText = initials;
+            // Load any previously saved profile fields
+            loadProfileData(email);
+        }
+
+        let authMode = 'login'; // 'login' or 'signup'
+        window.toggleAuthMode = function () {
+            authMode = (authMode === 'login' ? 'signup' : 'login');
+            window.backToStep1(); // Always reset to step 1 when toggling
+
+            const isLogin = (authMode === 'login');
+            document.getElementById('auth-title').innerText = isLogin ? 'Welcome back 👋' : 'Create Account ✨';
+            document.getElementById('auth-subtitle').innerText = isLogin ? 'Sign in to your SmartMatch account' : 'Join the SmartMatch community today';
+            document.getElementById('auth-submit-text').innerHTML = isLogin ? '<svg data-lucide="log-in" class="w-4 h-4"></svg> Sign In' : '<svg data-lucide="user-plus" class="w-4 h-4"></svg> Sign Up';
+            document.getElementById('auth-mode-text').innerText = isLogin ? "Don't have an account?" : "Already have an account?";
+            document.getElementById('auth-mode-link').innerText = isLogin ? "Sign Up" : "Sign In";
+
+            // Clear errors
+            document.getElementById('auth-err').classList.add('hidden');
+            document.getElementById('auth-unauthorized-box').classList.add('hidden');
+            lucide.createIcons();
+        };
+
+        window.transitionToStep2 = function () {
+            const s1 = document.getElementById('auth-step-1');
+            const s2 = document.getElementById('auth-step-2');
+            gsap.to(s1, {
+                x: -20, opacity: 0, duration: 0.3, onComplete: () => {
+                    s1.classList.add('hidden');
+                    s2.classList.remove('hidden');
+                    gsap.fromTo(s2, { x: 20, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: 'power2.out' });
+                    lucide.createIcons();
+                }
+            });
+        };
+
+        window.backToStep1 = function () {
+            const s1 = document.getElementById('auth-step-1');
+            const s2 = document.getElementById('auth-step-2');
+            if (s2.classList.contains('hidden')) return;
+            gsap.to(s2, {
+                x: 20, opacity: 0, duration: 0.3, onComplete: () => {
+                    s2.classList.add('hidden');
+                    s1.classList.remove('hidden');
+                    gsap.fromTo(s1, { x: -20, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: 'power2.out' });
+                }
+            });
+        };
+
+        let tempUser = null;
+
+        window.handleLogin = async function () {
+            const emailEl = document.getElementById('auth-email');
+            const passEl = document.getElementById('auth-pass');
+            const emailErrEl = document.getElementById('auth-email-err');
+            const passErrEl = document.getElementById('auth-pass-err');
+            const authErrEl = document.getElementById('auth-err');
+            const unauthorizedBox = document.getElementById('auth-unauthorized-box');
+
+            const email = emailEl.value.trim();
+            const pass = passEl.value;
+
+            // Reset UI
+            [emailEl, passEl].forEach(el => el.classList.remove('input-error'));
+            [emailErrEl, passErrEl].forEach(el => el.classList.remove('show'));
+            authErrEl.classList.add('hidden');
+            unauthorizedBox.classList.add('hidden');
+
+            let valid = true;
+            if (!email || !email.includes('@')) { emailEl.classList.add('input-error'); emailErrEl.classList.add('show'); valid = false; }
+            if (!pass || pass.length < 6) { passEl.classList.add('input-error'); passErrEl.classList.add('show'); valid = false; }
+            if (!valid) return;
+
+            if (isFirebaseConnected) {
+                try {
+                    let cred;
+                    if (authMode === 'login') {
+                        cred = await signInWithEmailAndPassword(auth, email, pass);
+                        document.getElementById('auth-modal').classList.add('hidden');
+                        updateUserProfile(cred.user);
+                        setupRealtimeListeners();
+                    } else {
+                        cred = await createUserWithEmailAndPassword(auth, email, pass);
+                        tempUser = cred.user;
+                        window.transitionToStep2();
+                        showToast('🎉 Account created! Now let\'s set up your profile.');
+                    }
+                } catch (err) {
+                    authErrEl.classList.remove('hidden');
+                    if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+                        authErrEl.innerHTML = '❌ Incorrect email or password. Please try again.';
+                    } else if (err.code === 'auth/email-already-in-use') {
+                        authErrEl.innerHTML = '⚠️ This email is already registered. Try signing in instead.';
+                    } else {
+                        authErrEl.innerHTML = '❌ ' + (err.message || 'Login failed.');
+                    }
+                    emailEl.classList.add('input-error');
+                    passEl.classList.add('input-error');
+                }
+            } else {
+                // Demo mode
+                if (authMode === 'login') {
+                    document.getElementById('auth-modal').classList.add('hidden');
+                    const mockUser = { displayName: email.split('@')[0], email, providerData: [{ providerId: 'password' }] };
+                    updateUserProfile(mockUser);
+                    fetchData();
+                } else {
+                    tempUser = { displayName: email.split('@')[0], email, providerData: [{ providerId: 'password' }] };
+                    window.transitionToStep2();
+                }
+            }
+        };
+
+        window.handleCompleteProfile = function () {
+            const name = document.getElementById('reg-name').value.trim();
+            const role = document.getElementById('reg-role').value;
+            const city = document.getElementById('reg-city').value.trim();
+            const org = document.getElementById('reg-org').value.trim();
+
+            if (!name || !city) {
+                showToast('⚠️ Please provide your name and city to continue.', true);
+                return;
+            }
+
+            const profileData = { name, role, city, org, bio: '' };
+            const email = tempUser ? tempUser.email : 'guest';
+            localStorage.setItem('profile_' + email, JSON.stringify(profileData));
+
+            document.getElementById('auth-modal').classList.add('hidden');
+            if (tempUser) updateUserProfile(tempUser);
+            if (isFirebaseConnected) setupRealtimeListeners();
+            else fetchData();
+
+            showToast('🚀 Profile setup complete! Welcome aboard.');
+        };
+
+        window.handleGoogleLogin = async function () {
+            const errEl = document.getElementById('auth-err');
+            const googleBtn = document.querySelector('.google-btn');
+
+            // Always clear previous error first
+            errEl.classList.add('hidden');
+            errEl.innerText = '';
+            document.getElementById('auth-unauthorized-box')?.classList.add('hidden');
+
+            if (isFirebaseConnected) {
+                // Show loading state on button
+                const original = googleBtn.innerHTML;
+                googleBtn.innerHTML = '<svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Signing in...';
+                googleBtn.disabled = true;
+
+                try {
+                    const provider = new GoogleAuthProvider();
+                    const cred = await signInWithPopup(auth, provider);
+
+                    // Check if new user
+                    const isNew = cred.additionalUserInfo?.isNewUser || !localStorage.getItem('profile_' + cred.user.email);
+
+                    if (isNew && authMode === 'signup') {
+                        tempUser = cred.user;
+                        window.transitionToStep2();
+                    } else {
+                        document.getElementById('auth-modal').classList.add('hidden');
+                        updateUserProfile(cred.user);
+                        setupRealtimeListeners();
+                    }
+                } catch (err) {
+                    googleBtn.innerHTML = original;
+                    googleBtn.disabled = false;
+
+                    if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return;
+
+                    if (err.code === 'auth/unauthorized-domain') {
+                        document.getElementById('auth-unauthorized-box').classList.remove('hidden');
+                        document.getElementById('auth-err').classList.add('hidden');
+                    } else {
+                        errEl.classList.remove('hidden');
+                        if (err.code === 'auth/operation-not-allowed') {
+                            errEl.innerHTML = '⚠️ Google Sign-In not enabled. Please enable it in Firebase Console.';
+                        } else if (err.code === 'auth/popup-blocked') {
+                            errEl.innerHTML = '⚠️ Popup was blocked. Please allow popups for this site.';
+                        } else {
+                            errEl.innerHTML = '❌ Authentication failed: ' + (err.message || 'Unknown error');
+                        }
+                    }
+                }
+            } else {
+                // Demo mode: simulate Google login
+                document.getElementById('auth-modal').classList.add('hidden');
+                const mockUser = { displayName: 'Google User', email: 'user@gmail.com', providerData: [{ providerId: 'google.com' }] };
+                updateUserProfile(mockUser);
+                fetchData();
+            }
+        };
+
+
+        window.handleLogout = async function () {
+            if (isFirebaseConnected) { try { await signOut(auth); } catch (e) { } }
+            // Reset UI
+            ['topbar-name', 'profile-name', 'profile-email', 'profile-username', 'profile-phone', 'profile-city', 'profile-org', 'profile-bio'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.tagName === 'TEXTAREA' ? el.value = '' : el.value !== undefined ? el.value = '' : el.innerText = '?';
+            });
+            const roleEl = document.getElementById('profile-role'); if (roleEl) roleEl.value = '';
+            document.getElementById('topbar-avatar').innerText = '?';
+            document.getElementById('topbar-name').innerText = 'Guest';
+            document.getElementById('profile-avatar').innerText = '?';
+            document.getElementById('auth-modal').classList.remove('hidden');
+        };
+
+        if (isFirebaseConnected) {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    // Auto-hide login modal — user is already logged in (session restored)
+                    document.getElementById('auth-modal').classList.add('hidden');
+                    updateUserProfile(user);
+                    setupRealtimeListeners();  // Start real-time sync
+                    requestNotificationPermission(); // Ask for push notifications
+                } else {
+                    // No session, show auth modal
+                    document.getElementById('auth-modal').classList.remove('hidden');
+                }
+            });
+        } else {
+            // Not connected to Firebase (Demo Mode) — show auth modal
+            document.getElementById('auth-modal').classList.remove('hidden');
+            const banner = document.getElementById('firebase-banner');
+            if (banner) banner.classList.remove('hidden');
+        }
+
+        // Save profile to localStorage keyed by email
+        window.saveProfile = function () {
+            const email = document.getElementById('profile-email')?.value;
+            const phone = document.getElementById('profile-phone')?.value?.trim();
+            const city = document.getElementById('profile-city')?.value?.trim();
+            const role = document.getElementById('profile-role')?.value;
+            let valid = true;
+            ['profile-phone', 'profile-city', 'profile-role'].forEach(id => document.getElementById(id)?.classList.remove('input-error'));
+            ['err-phone', 'err-city', 'err-role'].forEach(id => document.getElementById(id)?.classList.remove('show'));
+            if (!phone) { document.getElementById('profile-phone')?.classList.add('input-error'); document.getElementById('err-phone')?.classList.add('show'); valid = false; }
+            if (!city) { document.getElementById('profile-city')?.classList.add('input-error'); document.getElementById('err-city')?.classList.add('show'); valid = false; }
+            if (!role) { document.getElementById('profile-role')?.classList.add('input-error'); document.getElementById('err-role')?.classList.add('show'); valid = false; }
+            if (!valid) return;
+            const data = {
+                name: document.getElementById('profile-name')?.value,
+                username: document.getElementById('profile-username')?.value?.trim(),
+                phone,
+                city: currentSelectedLocation ? currentSelectedLocation.address : city,
+                coords: currentSelectedLocation ? { lat: currentSelectedLocation.lat, lng: currentSelectedLocation.lng } : null,
+                role,
+                org: document.getElementById('profile-org')?.value?.trim(),
+                bio: document.getElementById('profile-bio')?.value?.trim(),
+                skills: profileSkills
+            };
+            localStorage.setItem('profile_' + (email || 'guest'), JSON.stringify(data));
+            // Update topbar
+            if (data.name) {
+                document.getElementById('topbar-name').innerText = data.name;
+                const initials = data.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                document.getElementById('topbar-avatar').innerText = initials;
+                document.getElementById('profile-avatar').innerText = initials;
+                // Update profile header
+                const dn = document.getElementById('profile-display-name');
+                if (dn) dn.innerText = data.name;
+            }
+            // Update role chip
+            const dr = document.getElementById('profile-display-role');
+            if (dr && data.role) dr.innerText = data.role + ' · SmartMatch';
+            // City chip
+            const citySpan = document.getElementById('profile-display-city');
+            const cityLbl = document.getElementById('city-label');
+            if (citySpan && data.city) { cityLbl.innerText = data.city; citySpan.classList.replace('hidden', 'flex'); }
+            // Org chip
+            const orgSpan = document.getElementById('profile-display-org');
+            const orgLbl = document.getElementById('org-label');
+            if (orgSpan && data.org) { orgLbl.innerText = data.org; orgSpan.classList.replace('hidden', 'flex'); }
+
+            updateProfileStrength(data);
+            updateActivityStats();
+            showToast('✅ Profile saved successfully!');
+            lucide.createIcons();
+        };
+
+        // Load saved profile from localStorage
+        function loadProfileData(email) {
+            const saved = localStorage.getItem('profile_' + (email || 'guest'));
+            if (!saved) return;
+            const d = JSON.parse(saved);
+            const fields = [['profile-username', d.username], ['profile-phone', d.phone], ['profile-city', d.city], ['profile-org', d.org], ['profile-bio', d.bio]];
+            fields.forEach(([id, val]) => { const el = document.getElementById(id); if (el && val) el.value = val; });
+            if (d.role) { const r = document.getElementById('profile-role'); if (r) r.value = d.role; }
+            if (d.name) {
+                const el = document.getElementById('profile-name'); if (el) el.value = d.name;
+                const initials = d.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                document.getElementById('topbar-name').innerText = d.name;
+                document.getElementById('topbar-avatar').innerText = initials;
+                document.getElementById('profile-avatar').innerText = initials;
+                const dn = document.getElementById('profile-display-name'); if (dn) dn.innerText = d.name;
+            }
+            if (d.role) { const dr = document.getElementById('profile-display-role'); if (dr) dr.innerText = d.role + ' · SmartMatch'; }
+            if (d.city) { const cl = document.getElementById('city-label'); if (cl) cl.innerText = d.city; document.getElementById('profile-display-city')?.classList.replace('hidden', 'flex'); }
+            if (d.org) { const ol = document.getElementById('org-label'); if (ol) ol.innerText = d.org; document.getElementById('profile-display-org')?.classList.replace('hidden', 'flex'); }
+            if (d.skills && Array.isArray(d.skills)) { profileSkills = d.skills; renderSkillTags(); }
+            updateProfileStrength(d);
+            updateActivityStats();
+        }
+
+        // ── SKILL TAGS ──────────────────────────────────────────────────────
+        let profileSkills = [];
+        window.addSkillTag = function () {
+            const inp = document.getElementById('skill-input');
+            if (!inp) return;
+            const val = inp.value.trim();
+            if (!val || profileSkills.includes(val)) { inp.value = ''; return; }
+            profileSkills.push(val);
+            inp.value = '';
+            renderSkillTags();
+        };
+        function renderSkillTags() {
+            const container = document.getElementById('skill-tags');
+            if (!container) return;
+            const colors = ['bg-indigo-100 text-indigo-700', 'bg-purple-100 text-purple-700', 'bg-emerald-100 text-emerald-700', 'bg-amber-100 text-amber-700', 'bg-rose-100 text-rose-700', 'bg-sky-100 text-sky-700'];
+            if (profileSkills.length === 0) {
+                container.innerHTML = '<span class="text-xs text-slate-400">Add skills below →</span>';
+                return;
+            }
+            container.innerHTML = profileSkills.map((s, i) =>
+                `<span onclick="removeSkillTag(${i})" class="cursor-pointer flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${colors[i % colors.length]} hover:opacity-75 transition select-none">${s} <svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg></span>`
+            ).join('');
+        }
+        window.removeSkillTag = function (idx) { profileSkills.splice(idx, 1); renderSkillTags(); };
+
+        // ── PROFILE STRENGTH ──────────────────────────────────────────────
+        function updateProfileStrength(d) {
+            const checks = [
+                { key: 'name', label: 'Add your full name', done: !!d.name },
+                { key: 'phone', label: 'Add phone number', done: !!d.phone },
+                { key: 'city', label: 'Add your city', done: !!d.city },
+                { key: 'role', label: 'Select your role', done: !!d.role },
+                { key: 'org', label: 'Add organization name', done: !!d.org },
+                { key: 'bio', label: 'Write a short bio', done: !!d.bio },
+                { key: 'skills', label: 'Add at least one skill', done: profileSkills.length > 0 }
+            ];
+            const done = checks.filter(c => c.done).length;
+            const pct = Math.round((done / checks.length) * 100);
+            const bar = document.getElementById('profile-strength-bar');
+            const lbl = document.getElementById('profile-strength-label');
+            const tips = document.getElementById('profile-tips');
+            if (bar) bar.style.width = pct + '%';
+            if (lbl) lbl.innerText = pct >= 100 ? '🌟 Profile Complete! You are fully matched.' : `${pct}% — Fill more fields to improve match rate`;
+            if (tips) tips.innerHTML = checks.filter(c => !c.done).slice(0, 3).map(c =>
+                `<div class="flex items-center gap-2 text-xs text-slate-400"><span class="w-4 h-4 rounded-full border-2 border-slate-200 flex-shrink-0"></span>${c.label}</div>`
+            ).join('');
+        }
+
+        // ── ACTIVITY STATS (from live Firestore data) ────────────────────
+        function updateActivityStats() {
+            const completed = tasks.filter(t => t.status === 'Completed').length;
+            const assigned = tasks.filter(t => t.assignedTo !== null && t.status !== 'Completed').length;
+            const el1 = document.getElementById('act-completed'); if (el1) el1.innerText = completed;
+            const el2 = document.getElementById('act-assigned'); if (el2) el2.innerText = assigned;
+            const pt = document.getElementById('prof-stat-tasks'); if (pt) pt.innerText = completed;
+        }
+
+        let currentModalType = '';
+        window.openModal = function (type) {
+            currentModalType = type;
+            document.getElementById('add-modal').classList.remove('hidden');
+            const el = document.getElementById('modal-body');
+            if (type === 'Volunteer') {
+                document.getElementById('modal-title').innerText = "Add Volunteer";
+                el.innerHTML = `
+                    <div>
+                        <input id="val-name" type="text" placeholder="Full Name *" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-primary-500">
+                        <p id="err-name" class="field-err">⚠ Name is required.</p>
+                    </div>
+                    <div>
+                        <input id="val-skill" type="text" placeholder="Skills (e.g., Medical, Driving) *" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-primary-500">
+                        <p id="err-skill" class="field-err">⚠ At least one skill is required.</p>
+                    </div>
+                    <div>
+                        <input id="val-loc" type="text" placeholder="Location *" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-primary-500">
+                        <p id="err-loc" class="field-err">⚠ Location is required.</p>
+                    </div>`;
+                // Initialize autocomplete for volunteer location
+                setTimeout(() => window.initLocationAutocomplete('val-loc'), 100);
+            } else {
+                document.getElementById('modal-title').innerText = "Add Task";
+                el.innerHTML = `
+                    <div>
+                        <input id="task-title" type="text" placeholder="Task Title *" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-primary-500">
+                        <p id="err-title" class="field-err">⚠ Task title is required.</p>
+                    </div>
+                    <div>
+                        <input id="task-req" type="text" placeholder="Required Skill *" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-primary-500">
+                        <p id="err-req" class="field-err">⚠ Required skill is required.</p>
+                    </div>
+                    <select id="task-pri" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                        <option value="High">High Priority</option>
+                        <option value="Medium">Medium Priority</option>
+                        <option value="Low">Low Priority</option>
+                    </select>
+                    <div>
+                        <input id="task-loc" type="text" placeholder="Location *" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-primary-500">
+                        <p id="err-tloc" class="field-err">⚠ Location is required.</p>
+                    </div>`;
+                // Initialize autocomplete for task location
+                setTimeout(() => window.initLocationAutocomplete('task-loc'), 100);
+            }
+            currentSelectedLocation = null; // Reset coord state
+            document.getElementById('modal-save-btn').onclick = saveModalData;
+            lucide.createIcons();
+        };
+        window.closeModal = () => document.getElementById('add-modal').classList.add('hidden');
+
+        function setErr(id, errId, msg) {
+            const el = document.getElementById(id);
+            const errEl = document.getElementById(errId);
+            if (el) el.classList.add('input-error');
+            if (errEl) { errEl.innerText = msg; errEl.classList.add('show'); }
+        }
+        function clearErr(id, errId) {
+            const el = document.getElementById(id);
+            const errEl = document.getElementById(errId);
+            if (el) el.classList.remove('input-error');
+            if (errEl) errEl.classList.remove('show');
+        }
+
+        async function saveModalData() {
+            let valid = true;
+            try {
+                if (currentModalType === 'Volunteer') {
+                    const name = document.getElementById('val-name')?.value?.trim();
+                    const skill = document.getElementById('val-skill')?.value?.trim();
+                    const loc = document.getElementById('val-loc')?.value?.trim();
+                    clearErr('val-name', 'err-name'); clearErr('val-skill', 'err-skill'); clearErr('val-loc', 'err-loc');
+                    if (!name) { setErr('val-name', 'err-name', '⚠ Name is required.'); valid = false; }
+                    if (!skill) { setErr('val-skill', 'err-skill', '⚠ At least one skill is required.'); valid = false; }
+                    if (!loc) { setErr('val-loc', 'err-loc', '⚠ Location is required.'); valid = false; }
+                    if (!valid) return;
+                    const data = {
+                        name, skill,
+                        location: currentSelectedLocation ? currentSelectedLocation.address : loc,
+                        coords: currentSelectedLocation ? { lat: currentSelectedLocation.lat, lng: currentSelectedLocation.lng } : null,
+                        available: true, status: 'Available'
+                    };
+                    if (isFirebaseConnected) { await addDoc(collection(db, 'volunteers'), data); } else { data.id = Date.now().toString(); volunteers.push(data); }
+                } else {
+                    const title = document.getElementById('task-title')?.value?.trim();
+                    const req = document.getElementById('task-req')?.value?.trim();
+                    const pri = document.getElementById('task-pri')?.value;
+                    const loc = document.getElementById('task-loc')?.value?.trim();
+                    clearErr('task-title', 'err-title'); clearErr('task-req', 'err-req'); clearErr('task-loc', 'err-tloc');
+                    if (!title) { setErr('task-title', 'err-title', '⚠ Task title is required.'); valid = false; }
+                    if (!req) { setErr('task-req', 'err-req', '⚠ Required skill is required.'); valid = false; }
+                    if (!loc) { setErr('task-loc', 'err-tloc', '⚠ Location is required.'); valid = false; }
+                    if (!valid) return;
+                    const data = {
+                        title, requiredSkill: req, priority: pri,
+                        location: currentSelectedLocation ? currentSelectedLocation.address : loc,
+                        coords: currentSelectedLocation ? { lat: currentSelectedLocation.lat, lng: currentSelectedLocation.lng } : null,
+                        assignedTo: null, status: 'Pending'
+                    };
+                    if (isFirebaseConnected) { await addDoc(collection(db, 'tasks'), data); } else { data.id = Date.now().toString(); tasks.push(data); }
+                }
+                closeModal();
+                // onSnapshot will auto-update the UI — no need to call fetchData()
+                if (!isFirebaseConnected) {
+                    renderTables();
+                    // In demo mode, trigger auto-assign immediately for new tasks
+                    const latestTask = tasks[tasks.length - 1];
+                    if (latestTask) window.autoMatchAndAssign(latestTask);
+                }
+            } catch (e) { alert("Error saving data: " + e.message); }
+        }
+
+        // Real-time listeners — automatically syncs with Firestore for ALL users
+        let unsubVolunteers = null, unsubTasks = null;
+
+        function setupRealtimeListeners() {
+            if (!isFirebaseConnected) { renderTables(); return; }
+            if (unsubVolunteers) unsubVolunteers();
+            if (unsubTasks) unsubTasks();
+
+            const volRef = collection(db, 'volunteers');
+            const taskRef = collection(db, 'tasks');
+
+            // Listen to volunteers in real time
+            unsubVolunteers = onSnapshot(volRef, (snap) => {
+                volunteers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderTables();
+            }, (err) => console.warn('Volunteers listener error:', err));
+
+            // Track previously known task IDs so we only notify on truly NEW tasks
+            let knownTaskIds = new Set();
+            let firstTaskLoad = true;
+
+            // Listen to tasks in real time — fires browser notification on NEW task
+            unsubTasks = onSnapshot(taskRef, (snap) => {
+                tasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                if (firstTaskLoad) {
+                    // On first load, just populate knownTaskIds silently
+                    snap.docs.forEach(d => knownTaskIds.add(d.id));
+                    firstTaskLoad = false;
+                } else {
+                    // Check for genuinely new tasks
+                    snap.docChanges().forEach(change => {
+                        if (change.type === 'added' && !knownTaskIds.has(change.doc.id)) {
+                            knownTaskIds.add(change.doc.id);
+                            const t = { id: change.doc.id, ...change.doc.data() };
+                            fireTaskNotification(t);
+                            // Trigger Auto-Assignment 🤖
+                            window.autoMatchAndAssign(t);
+                        }
+                    });
+                }
+
+                renderTables();
+            }, (err) => console.warn('Tasks listener error:', err));
+        }
+
+        // Keep fetchData for backward compat (called after login in demo mode)
+        window.fetchData = function () { setupRealtimeListeners(); };
+
+        // ── PUSH NOTIFICATIONS ────────────────────────────────────────────────
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission().then(perm => {
+                    if (perm === 'granted') {
+                        showToast('🔔 Notifications enabled! You will be alerted for new tasks near you.');
+                    }
+                });
+            }
+        }
+
+        let notifCount = 0;
+        function fireTaskNotification(task) {
+            const title = task.title || 'New Task';
+            const loc = task.location || 'Unknown location';
+            const pri = task.priority || 'Medium';
+            const priEmoji = pri === 'High' ? '🔴' : pri === 'Medium' ? '🟡' : '🟢';
+
+            // --- Browser push notification ---
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(`${priEmoji} New Task Near You!`, {
+                    body: `📋 ${title}\n📍 ${loc} · Priority: ${pri}`,
+                    icon: 'https://cdn-icons-png.flaticon.com/512/1055/1055687.png',
+                    badge: 'https://cdn-icons-png.flaticon.com/512/1055/1055687.png',
+                    tag: 'smartmatch-task'
+                });
+            }
+
+            // --- In-app toast ---
+            showToast(`${priEmoji} New task in <strong>${loc}</strong>: ${title}`);
+
+            // --- Bell badge counter ---
+            notifCount++;
+            const badge = document.getElementById('notif-badge');
+            if (badge) { badge.innerText = notifCount; badge.classList.remove('hidden'); }
+
+            // --- Add to notification dropdown ---
+            const list = document.getElementById('notif-list');
+            if (list) {
+                const item = document.createElement('div');
+                item.className = 'p-4 hover:bg-slate-50 border-b border-slate-100';
+                item.innerHTML = `<p class="text-sm font-semibold text-slate-800">${priEmoji} ${title}</p>
+                    <p class="text-xs text-slate-500 mt-0.5">📍 ${loc} · ${pri} priority · Just now</p>`;
+                list.prepend(item);
+            }
+        }
+
+        const getStatusBadge = (status) => status === 'Available' ? `<span class="text-green-600 bg-green-50 px-2 py-1 rounded-md font-bold text-xs border border-green-200">Available</span>` : `<span class="text-rose-600 bg-rose-50 px-2 py-1 rounded-md font-bold text-xs border border-rose-200">Unavailable</span>`;
+        const getPriorityBadge = (p) => `<span class="text-${p === 'High' ? 'rose' : p === 'Medium' ? 'amber' : 'emerald'}-600 bg-${p === 'High' ? 'rose' : p === 'Medium' ? 'amber' : 'emerald'}-50 px-2 py-1 rounded-md font-bold text-xs border border-${p === 'High' ? 'rose' : p === 'Medium' ? 'amber' : 'emerald'}-200">${p}</span>`;
+
+        function renderTables() {
+            // --- Live Dashboard Stats ---
+            const totalVols = volunteers.length;
+            const availableVols = volunteers.filter(v => v.available || v.status === 'Available').length;
+            const totalTasks = tasks.length;
+            const urgentPending = tasks.filter(t => t.priority === 'High' && !t.assignedTo).length;
+
+            const sv = document.getElementById('stat-volunteers');
+            const sa = document.getElementById('stat-available');
+            const st = document.getElementById('stat-tasks');
+            const su = document.getElementById('stat-urgent');
+            if (sv) sv.innerText = totalVols;
+            if (sa) sa.innerText = availableVols;
+            if (st) st.innerText = totalTasks;
+            if (su) su.innerText = urgentPending;
+
+            // --- Tables ---
+            document.getElementById('vols-tbody').innerHTML = volunteers.map(v => `<tr><td class="p-4 font-medium text-slate-800">${v.name}</td><td class="p-4 text-slate-500">${v.skill}</td><td class="p-4 text-slate-500 flex items-center gap-1"><svg class="w-3.5 h-3.5" data-lucide="map-pin"></svg>${v.location}</td><td class="p-4">${getStatusBadge(v.status)}</td></tr>`).join('');
+
+            document.getElementById('tasks-tbody').innerHTML = tasks.map(t => {
+                const assignedVol = t.assignedTo ? volunteers.find(v => v.id === t.assignedTo) : null;
+                const statusBadge = t.status === 'Completed'
+                    ? `<span class="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md font-bold text-xs border border-emerald-200">✅ Completed</span>`
+                    : t.assignedTo
+                        ? `<span class="text-amber-600 bg-amber-50 px-2 py-1 rounded-md font-bold text-xs border border-amber-200">🔄 Assigned</span>`
+                        : `<span class="text-slate-500 bg-slate-100 px-2 py-1 rounded-md font-bold text-xs border border-slate-200">Pending</span>`;
+                const actionBtn = (t.assignedTo && t.status !== 'Completed')
+                    ? `<button onclick="handleMarkComplete('${t.id}','${t.assignedTo}')" class="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl hover:bg-emerald-100 transition whitespace-nowrap">✅ Mark Complete — I'm Available!</button>`
+                    : '';
+                const assignedInfo = assignedVol
+                    ? `<span class="text-xs text-indigo-600 font-semibold">👤 ${assignedVol.name}</span>`
+                    : '';
+                return `<tr>
+                    <td class="p-4 font-medium text-slate-800">${t.title}</td>
+                    <td class="p-4">${getPriorityBadge(t.priority)}</td>
+                    <td class="p-4 text-slate-500 text-xs">${t.location}</td>
+                    <td class="p-4">${statusBadge} ${assignedInfo}</td>
+                    <td class="p-4">${actionBtn}</td>
+                </tr>`;
+            }).join('');
+            // Update table header to include Action column
+            const taskHead = document.querySelector('#tasks-tbody')?.closest('table')?.querySelector('thead tr');
+            if (taskHead && taskHead.children.length < 5) {
+                taskHead.innerHTML = '<th class="p-4 font-semibold">Title</th><th class="p-4 font-semibold">Priority</th><th class="p-4 font-semibold">Location</th><th class="p-4 font-semibold">Status</th><th class="p-4 font-semibold">Action</th>';
+            }
+            lucide.createIcons();
+
+            // --- Update Charts Dynamically ---
+            updateDashboardCharts();
+
+            renderMatches();
+            if (window.disasterMap && typeof window.updateMapMarkers === 'function') {
+                window.updateMapMarkers();
+            }
+        }
+
+        async function fetchGeminiMatch(task) {
+            const avails = volunteers.filter(v => v.available || v.status === 'Available');
+            if (GEMINI_API_KEY === "YOUR_GEMINI_API_KEY" || avails.length === 0) {
+                // Offline/Dummy fallback matching
+                return avails.find(v => v.skill.toLowerCase().includes(task.requiredSkill?.toLowerCase() || '')) || avails[0];
+            }
+            try {
+                const prompt = `Find the best volunteer for Task: ${JSON.stringify(task)}. Available Volunteers: ${JSON.stringify(avails)}. Return ONLY valid JSON: {"bestVolunteerId": "id"}`;
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await res.json();
+                const text = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
+                const id = JSON.parse(text).bestVolunteerId;
+                return avails.find(v => v.id === id);
+            } catch (e) { return avails[0]; }
+        }
+
+        /**
+         * Automatically perform matching and assign if setting is enabled
+         */
+        window.autoMatchAndAssign = async function (task) {
+            const autoBtn = document.getElementById('setting-auto-assign');
+            const isAutoOn = autoBtn && autoBtn.getAttribute('data-on') === 'true';
+
+            if (!isAutoOn) return;
+            if (task.assignedTo || task.status !== 'Pending') return;
+
+            console.log(`🤖 Auto-assigning task: ${task.title}`);
+            const bestMatch = await fetchGeminiMatch(task);
+
+            if (bestMatch && bestMatch.id) {
+                // If location preference is on, we ensure they aren't too far (optional logic)
+                const locBtn = document.getElementById('setting-location-match');
+                const isLocPrefOn = locBtn && locBtn.getAttribute('data-on') === 'true';
+
+                if (isLocPrefOn && task.coords && bestMatch.coords) {
+                    const travel = await window.fetchTravelData(bestMatch.coords, task.coords);
+                    // If duration is more than 2 hours, maybe don't auto-assign?
+                    if (travel && travel.durationValue > 7200) {
+                        console.log("Too far for auto-assignment.");
+                        return;
+                    }
+                }
+
+                await window.handleAssign(task.id, bestMatch.id);
+                showToast(`🚀 <strong>Auto-Assigned!</strong> Volunteer <b>${bestMatch.name}</b> was matched to task <b>${task.title}</b>.`);
+            }
+        };
+
+        window.handleAssign = async function (taskId, volId) {
+            try {
+                if (isFirebaseConnected) {
+                    await updateDoc(doc(db, 'tasks', taskId), { assignedTo: volId, status: 'Assigned' });
+                    await updateDoc(doc(db, 'volunteers', volId), { available: false, status: 'Not Available' });
+                } else {
+                    const tk = tasks.find(t => t.id === taskId); if (tk) { tk.assignedTo = volId; tk.status = 'Assigned'; }
+                    const vl = volunteers.find(v => v.id === volId); if (vl) { vl.available = false; vl.status = 'Not Available'; }
+                    renderTables();
+                }
+                showToast('🎯 Volunteer assigned successfully! Task is now active.');
+            } catch (e) { showToast('❌ Assignment failed. Please try again.', true); }
+        };
+
+        window.handleMarkComplete = async function (taskId, volId) {
+            if (!confirm('Mark this task as Complete? The volunteer will be set back to Available.')) return;
+            try {
+                if (isFirebaseConnected) {
+                    await updateDoc(doc(db, 'tasks', taskId), { assignedTo: null, status: 'Completed' });
+                    await updateDoc(doc(db, 'volunteers', volId), { available: true, status: 'Available' });
+                } else {
+                    const tk = tasks.find(t => t.id === taskId); if (tk) { tk.assignedTo = null; tk.status = 'Completed'; }
+                    const vl = volunteers.find(v => v.id === volId); if (vl) { vl.available = true; vl.status = 'Available'; }
+                    renderTables();
+                }
+                showToast('✅ Great work! Task marked complete. You are now Available again.');
+            } catch (e) { showToast('❌ Could not update. Please try again.', true); }
+        };
+
+        window.toggleSetting = function (btn) {
+            const isOn = btn.getAttribute('data-on') === 'true';
+            const knob = btn.querySelector('.toggle-knob');
+            if (isOn) {
+                btn.setAttribute('data-on', 'false');
+                btn.classList.replace('bg-indigo-500', 'bg-slate-200');
+                knob.classList.replace('right-1', 'left-1');
+            } else {
+                btn.setAttribute('data-on', 'true');
+                btn.classList.replace('bg-slate-200', 'bg-indigo-500');
+                knob.classList.replace('left-1', 'right-1');
+            }
+        };
+
+        function showToast(msg, isError = false) {
+            let t = document.getElementById('toast');
+            if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+            t.className = `flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl font-semibold text-sm ${isError ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white'}`;
+            t.innerHTML = msg;
+            t.classList.add('show');
+            clearTimeout(t._timer);
+            t._timer = setTimeout(() => t.classList.remove('show'), 3500);
+        }
+
+        async function renderMatches() {
+            const matchGrid = document.getElementById('match-grid');
+
+            // Build matches asynchronously.
+            const pendingTasks = tasks.filter(t => t.assignedTo === null);
+            if (pendingTasks.length === 0) { matchGrid.innerHTML = '<p class="text-slate-500">No pending tasks matching.</p>'; return; }
+
+            matchGrid.innerHTML = '<div class="col-span-full py-10 text-center"><svg data-lucide="loader-2" class="w-8 h-8 mx-auto animate-spin text-indigo-500"></svg><p class="mt-2 text-sm text-slate-500">AI Engine processing optimal matches...</p></div>';
+            lucide.createIcons();
+
+            let matchedHtml = '';
+            for (let t of pendingTasks) {
+                const match = await fetchGeminiMatch(t);
+                t.match = match;
+
+                const isAvail = t.match && t.match.available;
+                const bgClass = isAvail ? 'bg-blue-50/50 border-blue-100' : 'bg-rose-50/30 border-rose-100';
+                const iconColor = isAvail ? 'text-indigo-400' : 'text-rose-400';
+                const btnText = isAvail ? 'Assign Volunteer' : 'Unavailable - Find Alternative';
+                const btnClass = isAvail ? 'bg-slate-900 hover:bg-primary-600 text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed';
+
+                let travelInfo = null;
+                if (isAvail && t.coords && t.match.coords) {
+                    travelInfo = await window.fetchTravelData(t.match.coords, t.coords);
+                }
+
+                // Match score calculation
+                let matchScore = travelInfo ? Math.max(60, 100 - Math.floor(travelInfo.durationValue / 120)) : 75;
+                if (t.match && t.location === t.match.location) matchScore = 98;
+
+                if (!t.match) continue;
+
+                const travelHtml = travelInfo ? `
+                    <div class="flex items-center gap-4 mt-3 mb-2 px-1">
+                        <div class="flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100">
+                            <svg data-lucide="clock" class="w-3 h-3"></svg> ${travelInfo.duration}
+                        </div>
+                        <div class="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
+                            <svg data-lucide="navigation" class="w-3 h-3"></svg> ${travelInfo.distance}
+                        </div>
+                    </div>` : '';
+
+                const mapsUrl = t.coords && t.match.coords ? `https://www.google.com/maps/dir/?api=1&origin=${t.match.coords.lat},${t.match.coords.lng}&destination=${t.coords.lat},${t.coords.lng}&travelmode=driving` : '#';
+
+                matchedHtml += `
+                <div class="bg-white rounded-[2rem] border border-slate-100 shadow-card p-6 relative overflow-hidden group hover:shadow-lg transition-all">
+                    <div class="absolute -right-10 -top-10 w-32 h-32 bg-indigo-50 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="mb-5 relative z-10">
+                        <div class="flex justify-between items-start">
+                            ${getPriorityBadge(t.priority)}
+                            <div class="text-right"><p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Reliability Score</p><p class="text-lg font-black text-indigo-600">${matchScore}%</p></div>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 mt-2">${t.title}</h3>
+                        <p class="text-sm text-slate-500 flex items-center gap-1"><svg data-lucide="map-pin" class="w-3 h-3 text-slate-400"></svg> ${t.location}</p>
+                    </div>
+                    <!-- Suggestion Block -->
+                    <div class="${bgClass} border rounded-2xl p-4 relative z-10 transition-colors">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-lg border-2 border-white">${t.match.name[0]}</div>
+                                <div><p class="font-bold text-slate-800 text-sm">${t.match.name}</p><p class="text-[10px] uppercase font-bold text-slate-400">${t.match.skill}</p></div>
+                            </div>
+                            ${mapsUrl !== '#' ? `<a href="${mapsUrl}" target="_blank" class="p-2 bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm" title="View Route on Google Maps"><svg data-lucide="map" class="w-4 h-4"></svg></a>` : ''}
+                        </div>
+                        
+                        ${travelHtml}
+
+                        <button onclick="${isAvail ? `handleAssign('${t.id}', '${t.match.id}')` : ''}" class="w-full ${btnClass} py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 mt-2 shadow-sm transform hover:-translate-y-0.5">
+                            ${isAvail ? '<svg data-lucide="user-plus" class="w-4 h-4"></svg>' : '<svg data-lucide="alert-circle" class="w-4 h-4"></svg>'} ${btnText}
+                        </button>
+                    </div>
+                </div>`;
+            }
+
+            matchGrid.innerHTML = matchedHtml;
+            lucide.createIcons();
+        }
+
+        const notifs = [{ text: 'Real-time data connected via Firebase Firestore! 🚀', time: 'Now' }];
+        document.getElementById('notif-list').innerHTML = notifs.map(n => `<div class="p-4 hover:bg-slate-50 cursor-pointer"><p class="text-sm font-medium text-slate-700">${n.text}</p></div>`).join('');
+
+        document.getElementById('notif-btn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('notif-dropdown').classList.toggle('hidden'); document.getElementById('notif-dropdown').classList.toggle('flex'); });
+        document.addEventListener('click', () => { document.getElementById('notif-dropdown').classList.add('hidden'); document.getElementById('notif-dropdown').classList.remove('flex'); });
+
+        // --- Dynamic Chart Setup ---
+        let chart1 = null, chart2 = null, insightChart1 = null, insightChart2 = null;
+
+        function initCharts() {
+            chart1 = new ApexCharts(document.getElementById("dashChart1"), { chart: { type: 'area', height: 240, toolbar: { show: false }, animations: { enabled: true } }, series: [{ name: 'Available', data: [0] }], colors: ['#0ea5e9'], fill: { type: 'gradient', gradient: { opacityFrom: 0.45, opacityTo: 0.05 } }, dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: ['Now'] }, tooltip: { theme: 'light' } });
+            chart1.render();
+
+            chart2 = new ApexCharts(document.getElementById("dashChart2"), { chart: { type: 'donut', height: 240, toolbar: { show: false } }, series: [0, 0, 1], labels: ['Pending', 'Assigned', 'High Priority'], colors: ['#6366f1', '#10b981', '#f43f5e'], dataLabels: { enabled: true }, legend: { position: 'bottom' } });
+            chart2.render();
+
+            insightChart1 = new ApexCharts(document.getElementById("insightChart1"), { chart: { type: 'donut', height: 280 }, series: [1], labels: ['No Data'], colors: ['#cbd5e1'] });
+            insightChart1.render();
+
+            insightChart2 = new ApexCharts(document.getElementById("insightChart2"), { chart: { type: 'pie', height: 280 }, series: [1, 0], labels: ['Available', 'Unavailable'], colors: ['#10b981', '#f43f5e'] });
+            insightChart2.render();
+        }
+
+        function updateDashboardCharts() {
+            if (!chart1 || !chart2) return;
+
+            // Chart 1: Available vs Total over sliding window (last 6 data points)
+            const avail = volunteers.filter(v => v.available || v.status === 'Available').length;
+            const total = volunteers.length;
+            chart1.updateSeries([{ name: 'Available Volunteers', data: [Math.max(0, total - 3), Math.max(0, total - 2), Math.max(0, total - 1), avail] }]);
+            chart1.updateOptions({ xaxis: { categories: ['-3', '-2', '-1', 'Now'] } });
+
+            // Chart 2: Task breakdown donut
+            const pending = tasks.filter(t => !t.assignedTo).length;
+            const assigned = tasks.filter(t => t.assignedTo).length;
+            const highPri = tasks.filter(t => t.priority === 'High').length;
+            chart2.updateSeries([Math.max(0, pending), Math.max(0, assigned), Math.max(0, highPri)]);
+
+            // Insight chart 1: skill demand from tasks
+            const skillMap = {};
+            tasks.forEach(t => { const s = t.requiredSkill || 'Other'; skillMap[s] = (skillMap[s] || 0) + 1; });
+            const skillLabels = Object.keys(skillMap);
+            const skillData = Object.values(skillMap);
+            if (skillLabels.length > 0) insightChart1.updateOptions({ labels: skillLabels });
+            if (skillData.length > 0) insightChart1.updateSeries(skillData);
+
+            // Insight chart 2: volunteer availability
+            const unavail = volunteers.filter(v => !v.available || v.status === 'Not Available').length;
+            insightChart2.updateSeries([Math.max(0, avail), Math.max(0, unavail)]);
+        }
+
+        initCharts();
+        window.addEventListener('load', () => {
+            showPage('dashboard');
+            fetchDisasterAlerts();   // Global GDACS feed
+            fetchIndiaNews();        // India priority feed
+
+            // Initialize autocomplete for profile if tag exists
+            setTimeout(() => {
+                if (document.getElementById('profile-city')) {
+                    window.initLocationAutocomplete('profile-city', (loc) => {
+                        // Optional: update something when profile city changes
+                        console.log("Profile city updated:", loc);
+                    });
+                }
+            }, 1000);
+        });
+
+        // ── LIVE DISASTER ALERTS (GDACS / UN Feed) ──────────────────────────
+        const DISASTER_ICONS = {
+            EQ: '🌋', TC: '🌀', FL: '🌊', VO: '🌋', DR: '☀️', WF: '🔥', TS: '🌊', default: '⚠️'
+        };
+        const SEVERITY_MAP = {
+            Red: { label: 'CRITICAL', cls: 'bg-rose-100 text-rose-700 border-rose-300' },
+            Orange: { label: 'HIGH', cls: 'bg-orange-100 text-orange-700 border-orange-300' },
+            Green: { label: 'MODERATE', cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' }
+        };
+
+        window.fetchDisasterAlerts = async function () {
+            const listEl = document.getElementById('disaster-list');
+            const updEl = document.getElementById('disaster-updated');
+            if (!listEl) return;
+
+            listEl.innerHTML = `<div class="flex items-center justify-center py-10 gap-3 text-slate-400">
+                <svg data-lucide="loader-2" class="w-5 h-5 animate-spin"></svg>
+                <span class="text-sm">Fetching live disaster data...</span></div>`;
+            lucide.createIcons();
+
+            try {
+                const GDACS_RSS = 'https://www.gdacs.org/xml/rss.xml';
+                const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(GDACS_RSS)}&count=10`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (!data.items || data.items.length === 0) throw new Error('No items');
+
+                updEl.innerText = 'Updated: ' + new Date().toLocaleTimeString();
+
+                listEl.innerHTML = data.items.map(item => {
+                    // Parse GDACS fields from title / description
+                    const title = item.title || 'Unknown Disaster';
+                    // Detect severity from title keywords
+                    let sev = 'Green';
+                    if (/red/i.test(item.categories?.join(' ') + item.title + item.description)) sev = 'Red';
+                    else if (/orange/i.test(item.categories?.join(' ') + item.title + item.description)) sev = 'Orange';
+
+                    // Detect disaster type
+                    let icon = DISASTER_ICONS.default;
+                    for (const [key, em] of Object.entries(DISASTER_ICONS)) {
+                        if (title.toUpperCase().includes(key)) { icon = em; break; }
+                    }
+                    if (/earthquake/i.test(title)) icon = '🌋';
+                    if (/cyclone|hurricane|typhoon/i.test(title)) icon = '🌀';
+                    if (/flood/i.test(title)) icon = '🌊';
+                    if (/fire|wildfire/i.test(title)) icon = '🔥';
+                    if (/drought/i.test(title)) icon = '☀️';
+                    if (/tsunami/i.test(title)) icon = '🌊';
+                    if (/volcano/i.test(title)) icon = '🌋';
+
+                    const { label, cls } = SEVERITY_MAP[sev] || SEVERITY_MAP.Green;
+                    const date = item.pubDate ? new Date(item.pubDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+                    // Extract country from title (usually after last '-')
+                    const parts = title.split(' - ');
+                    const country = parts.length > 1 ? parts[parts.length - 1].trim() : '';
+                    const safeTitle = title.replace(/'/g, "\\'");
+
+                    return `<div class="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 hover:bg-slate-50 transition group">
+                        <div class="text-2xl flex-shrink-0">${icon}</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2 mb-1">
+                                <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${cls}">${label}</span>
+                                ${country ? `<span class="text-xs text-slate-500 flex items-center gap-1">📍 ${country}</span>` : ''}
+                                ${date ? `<span class="text-xs text-slate-400">${date}</span>` : ''}
+                            </div>
+                            <p class="text-sm font-semibold text-slate-800 leading-snug">${parts[0] || title}</p>
+                        </div>
+                        <button onclick="openModalPrefilled('${safeTitle}', '${country}')"
+                            class="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-2 rounded-xl hover:bg-indigo-100 transition opacity-0 group-hover:opacity-100 sm:opacity-100">
+                            <svg data-lucide="plus-circle" class="w-3.5 h-3.5"></svg> Create Task
+                        </button>
+                    </div>`;
+                }).join('');
+
+                lucide.createIcons();
+
+                // Update the urgent stat counter with Red alerts
+                const redCount = data.items.filter(i => /red/i.test(i.title + i.description)).length;
+                const su = document.getElementById('stat-urgent');
+                if (su && redCount > 0) {
+                    su.innerText = redCount;
+                    su.classList.add('animate-pulse');
+                    setTimeout(() => su.classList.remove('animate-pulse'), 2000);
+                }
+
+            } catch (e) {
+                listEl.innerHTML = `<div class="flex flex-col items-center justify-center py-10 gap-2 text-slate-400">
+                    <svg data-lucide="wifi-off" class="w-7 h-7"></svg>
+                    <p class="text-sm font-semibold">Could not fetch disaster feed</p>
+                    <p class="text-xs">Check your internet connection or try refreshing.</p>
+                    <button onclick="fetchDisasterAlerts()" class="mt-2 text-xs bg-slate-100 px-4 py-2 rounded-xl hover:bg-slate-200 transition">Try Again</button>
+                </div>`;
+                lucide.createIcons();
+            }
+        };
+
+        // Pre-fill task modal from a disaster alert
+        window.openModalPrefilled = function (title, location) {
+            openModal('Task');
+            setTimeout(() => {
+                const t = document.getElementById('task-title');
+                const r = document.getElementById('task-req');
+                const l = document.getElementById('task-loc');
+                const p = document.getElementById('task-pri');
+                if (t) t.value = 'Emergency Response: ' + title.split(' - ')[0].trim().slice(0, 60);
+                if (r) r.value = 'Medical, First Aid, Logistics';
+                if (l) l.value = location || '';
+                if (p) p.value = 'High';
+            }, 100);
+        };
+
+        // Auto-refresh feeds every 5 minutes
+        setInterval(fetchDisasterAlerts, 5 * 60 * 1000);
+        setInterval(fetchIndiaNews, 5 * 60 * 1000);
+
+        // ── 🇮🇳 INDIA EMERGENCY NEWS (Google News RSS) ─────────────────────────
+        window.fetchIndiaNews = async function () {
+            const grid = document.getElementById('india-news-grid');
+            const ticker = document.getElementById('india-ticker');
+            const updEl = document.getElementById('india-updated');
+            if (!grid) return;
+
+            grid.innerHTML = `<div class="col-span-full flex items-center justify-center py-8 gap-3 text-slate-400">
+                <svg data-lucide="loader-2" class="w-5 h-5 animate-spin"></svg>
+                <span class="text-sm">Loading India alerts...</span></div>`;
+            lucide.createIcons();
+
+            // Multiple India-focused search queries via Google News RSS
+            const queries = [
+                'disaster flood earthquake cyclone India NDRF NDMA emergency',
+                'India flood alert 2025',
+                'India cyclone earthquake disaster relief'
+            ];
+            const q = encodeURIComponent(queries[0]);
+            const rssUrl = `https://news.google.com/rss/search?q=${q}&hl=en-IN&gl=IN&ceid=IN:en`;
+            const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}&count=9`;
+
+            try {
+                const res = await fetch(apiUrl);
+                const data = await res.json();
+
+                if (!data.items || data.items.length === 0) throw new Error('No India news');
+
+                updEl.innerText = 'Updated ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+                // Ticker text
+                const tickerText = data.items.map(i => '🔴 ' + i.title).join('   ·   ');
+                ticker.innerText = tickerText;
+                // Animate ticker
+                ticker.style.transition = 'none';
+                ticker.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    ticker.style.transition = `transform ${data.items.length * 5}s linear`;
+                    ticker.style.transform = `translateX(-${tickerText.length * 0.55}em)`;
+                }, 50);
+
+                // Urgency detection keywords
+                const URGENT_KW = /flood|earthquake|cyclone|disaster|emergency|alert|landslide|tsunami|fire|heatwave|drought/i;
+                const HIGH_KW = /rescue|relief|damage|victim|killed|death|displaced|ndrf|ndma/i;
+
+                grid.innerHTML = data.items.slice(0, 6).map(item => {
+                    const title = (item.title || '').replace(/ - .*$/, '').trim();
+                    const source = item.author || (item.title?.match(/ - ([^-]+)$/))?.[1] || 'News';
+                    const link = item.link || '#';
+                    const rawDate = item.pubDate ? new Date(item.pubDate) : new Date();
+                    const diffMs = Date.now() - rawDate.getTime();
+                    const diffH = Math.floor(diffMs / 36e5);
+                    const timeAgo = diffH < 1 ? 'Just now' : diffH < 24 ? `${diffH}h ago` : rawDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+
+                    // Urgency badge
+                    let badge = '';
+                    if (URGENT_KW.test(item.title)) badge = `<span class="inline-block text-[9px] font-bold bg-rose-100 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded-full mr-1">⚠️ URGENT</span>`;
+                    else if (HIGH_KW.test(item.title)) badge = `<span class="inline-block text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full mr-1">HIGH</span>`;
+
+                    // Detect icon
+                    let icon = '📰';
+                    if (/flood/i.test(title)) icon = '🌊';
+                    else if (/earthquake/i.test(title)) icon = '🌋';
+                    else if (/cyclone|typhoon/i.test(title)) icon = '🌀';
+                    else if (/fire|wildfire/i.test(title)) icon = '🔥';
+                    else if (/landslide/i.test(title)) icon = '⛰️';
+                    else if (/drought/i.test(title)) icon = '☀️';
+                    else if (/rescue|relief|ndrf/i.test(title)) icon = '🚑';
+
+                    const safeTitle = title.replace(/'/g, "\\'");
+                    return `<div class="p-4 hover:bg-orange-50 transition group cursor-pointer relative">
+                        <div class="flex items-start gap-3">
+                            <span class="text-xl mt-0.5 flex-shrink-0">${icon}</span>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-center gap-1 mb-1.5">
+                                    ${badge}
+                                    <span class="text-[10px] text-orange-600 font-semibold bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-full">${source.slice(0, 22)}</span>
+                                    <span class="text-[10px] text-slate-400 ml-auto">${timeAgo}</span>
+                                </div>
+                                <a href="${link}" target="_blank" class="text-sm font-bold text-slate-800 leading-snug hover:text-orange-700 line-clamp-2 block">${title}</a>
+                                <button onclick="openModalPrefilled('${safeTitle}', 'India')" class="mt-2 flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg hover:bg-indigo-100 transition opacity-0 group-hover:opacity-100">
+                                    <svg data-lucide="plus-circle" class="w-3 h-3"></svg> Create Task
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+
+                lucide.createIcons();
+
+            } catch (e) {
+                grid.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center py-8 gap-2 text-slate-400">
+                    <svg data-lucide="wifi-off" class="w-6 h-6"></svg>
+                    <p class="text-sm">Could not load India news</p>
+                    <button onclick="fetchIndiaNews()" class="text-xs bg-slate-100 px-4 py-2 rounded-xl hover:bg-slate-200 transition mt-1">Try Again</button>
+                </div>`;
+                lucide.createIcons();
+            }
+        };
+
+    </script>
+</body>
+
+</html>
